@@ -5,6 +5,8 @@ extern crate lazy_static;
 use std::f64::consts::TAU;
 use std::sync::Mutex;
 
+use rayon::prelude::*;
+use std::sync::RwLock;
 use lazy_static::lazy_static;
 use nalgebra::Vector3;
 use rand::rngs::SmallRng;
@@ -33,10 +35,10 @@ fn random(start: f64, stop: f64) -> f64 {
     RNG.lock().unwrap().gen_range(start, stop)
 }
 
-fn find_collision<'a, 'b>(ray: &'a Ray, scene: &[&'b (dyn Shape + 'b)]) -> Option<Collision<'b>> {
+fn find_collision<'a, 'b>(ray: &'a Ray, scene: &[RwLock<&'b (dyn Shape + 'b + Send + Sync)>]) -> Option<Collision<'b>> {
     let mut maybe_collision: Option<Collision> = None;
     for shape in scene {
-        let maybe_new_collision = shape.collide(ray, T_MIN, T_MAX);
+        let maybe_new_collision = shape.read().unwrap().collide(ray, T_MIN, T_MAX);
 
         maybe_collision = match maybe_collision {
             Some(collision) => match maybe_new_collision {
@@ -61,12 +63,11 @@ fn random_unit_vector() -> Vector3<f64> {
     Vector3::new(r * a.cos(), r * a.sin(), z)
 }
 
-fn _project_ray(ray: &Ray, scene: &[&dyn Shape], depth: i64) -> Color {
+fn _project_ray(ray: &Ray, scene: &[RwLock<&(dyn Shape + Send + Sync)>], depth: i64) -> Color {
     if depth == 0 {
         return Color::new(0.0, 0.0, 0.0);
     }
     let may_collision = find_collision(ray, scene);
-
     match may_collision {
         Some(collision) => {
             let target = collision.position() + collision.normal() + random_unit_vector();
@@ -80,7 +81,7 @@ fn _project_ray(ray: &Ray, scene: &[&dyn Shape], depth: i64) -> Color {
     }
 }
 
-fn project_ray(ray: &Ray, scene: &[&dyn Shape]) -> Color {
+fn project_ray(ray: &Ray, scene: &[RwLock<&(dyn Shape + Send + Sync)>]) -> Color {
     // parameterize max depth
     _project_ray(ray, scene, 50)
 }
@@ -107,28 +108,27 @@ fn main_loop() {
     let camera = Camera::new();
     let width = 3840.0;
     let height = 2160.0;
-    let mut small_rng = SmallRng::from_entropy();
 
     let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
     let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
     let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
-    let scene: Vec<&dyn Shape> = vec![&sphere, &sphere2, &sphere3];
+    let scene: Vec<RwLock<&(dyn Shape + Send + Sync)>> = vec![RwLock::new(&sphere), RwLock::new(&sphere2), RwLock::new(&sphere3)];
     println!("P3\n{} {} \n255", width, height);
 
     eprint!("Scanlines remaining:\n");
-    for y in (0..(height as i64)).rev() {
+    
+    (0..(height as i64)).into_par_iter().for_each(|y| {
         eprint!("\r{} <= {}", height, height as i64 - y);
-        for x in 0..(width as i64) {
+        for x in (0..width as i64) {
             let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
             for s in 0..SAMPLES_PER_PIXEL {
-                let offset_x = (x as f64 + small_rng.gen_range(0.0, 1.0)) / (width - 1.0);
-                let offset_y = (y as f64 + small_rng.gen_range(0.0, 1.0)) / (height - 1.0);
+                let offset_x = (x as f64 + random(0.0, 1.0)) / (width - 1.0);
+                let offset_y = (y as f64 + random(0.0, 1.0)) / (height - 1.0);
                 let r = camera.emit_ray_at(offset_x, offset_y);
                 pixel_color += project_ray(&r, &scene);
             }
-            write_color(pixel_color);
         }
-    }
+    });
     eprint!("\nDone! :-)\n");
 }
 
