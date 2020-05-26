@@ -1,3 +1,4 @@
+#![feature(test)]
 #![feature(tau_constant)]
 
 extern crate lazy_static;
@@ -18,6 +19,9 @@ use crate::shapes::sphere::Sphere;
 mod camera;
 mod ray;
 mod shapes;
+
+#[cfg(test)]
+use flame;
 
 type Color = Vector3<f64>;
 
@@ -65,6 +69,8 @@ fn _project_ray(ray: &Ray, scene: &[&dyn Shape], depth: i64) -> Color {
     if depth == 0 {
         return Color::new(0.0, 0.0, 0.0);
     }
+    #[cfg(test)]
+    let _fg = ::flame::start_guard(format!("project_ray_depth_{}", depth.to_string()));
     let may_collision = find_collision(ray, scene);
 
     match may_collision {
@@ -82,7 +88,7 @@ fn _project_ray(ray: &Ray, scene: &[&dyn Shape], depth: i64) -> Color {
 
 fn project_ray(ray: &Ray, scene: &[&dyn Shape]) -> Color {
     // parameterize max depth
-    _project_ray(ray, scene, 50)
+    _project_ray(ray, scene, 10)
 }
 
 fn sphere_color(normal: Vector3<f64>) -> Color {
@@ -103,10 +109,8 @@ fn write_color(color: Color) {
     println!("{} {} {}", ir, ig, ib);
 }
 
-fn main_loop() {
+pub fn main_loop(height: f64, width: f64) {
     let camera = Camera::new();
-    let width = 3840.0;
-    let height = 2160.0;
     let mut small_rng = SmallRng::from_entropy();
 
     let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
@@ -117,12 +121,20 @@ fn main_loop() {
 
     eprint!("Scanlines remaining:\n");
     for y in (0..(height as i64)).rev() {
+        #[cfg(test)]
+        let _fg = ::flame::start_guard("scan line");
         eprint!("\r{} <= {}", height, height as i64 - y);
         for x in 0..(width as i64) {
+            #[cfg(test)]
+            let _fg = ::flame::start_guard("pixel");
             let mut pixel_color = Vector3::new(0.0, 0.0, 0.0);
             for s in 0..SAMPLES_PER_PIXEL {
+                #[cfg(test)]
+                let _fg = ::flame::start_guard(format!("sample_{}", s));
+                let _fg2 = ::flame::start_guard("random offsets");
                 let offset_x = (x as f64 + small_rng.gen_range(0.0, 1.0)) / (width - 1.0);
                 let offset_y = (y as f64 + small_rng.gen_range(0.0, 1.0)) / (height - 1.0);
+                drop(_fg2);
                 let r = camera.emit_ray_at(offset_x, offset_y);
                 pixel_color += project_ray(&r, &scene);
             }
@@ -133,6 +145,34 @@ fn main_loop() {
 }
 
 fn main() -> std::io::Result<()> {
-    main_loop();
+    let height = 2160.0 / 30.0;
+    let width = 3840.0 / 30.0;
+    main_loop(height, width);
     Ok(())
+}
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use super::*;
+    use std::fs::File;
+
+    use test::Bencher;
+
+    #[test]
+    fn gen_flame() {
+        let _fg = ::flame::start_guard("main");
+        
+        main_loop(2160.0 / 200.0, 3840.0 / 200.0);
+        // in order to create the flamegraph you must call one of the
+        // flame::dump_* functions.
+        flame::dump_html(File::create("flamegraph.html").unwrap()).unwrap();
+    }
+    #[bench]
+    fn bench_simple(b: &mut Bencher) {
+        b.iter(|| {
+            let height = 2160.0;
+        let width = 3840.0;
+        main_loop(height / 30.0, width / 30.0);
+        })
+    }
 }
