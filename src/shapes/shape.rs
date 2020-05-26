@@ -1,36 +1,12 @@
+use crate::collision::Collision;
+use crate::materials::material::Material;
 use crate::ray::Ray;
 use nalgebra::Vector3;
-
-pub struct Collision<'a> {
-    dist_from_origin: f64,
-    position: Vector3<f64>,
-    shape: &'a dyn Shape,
-}
-
-impl Collision<'_> {
-    pub fn new(dist_from_origin: f64, position: Vector3<f64>, shape: &dyn Shape) -> Collision {
-        Collision {
-            position,
-            shape,
-            dist_from_origin,
-        }
-    }
-
-    pub fn position(&self) -> &Vector3<f64> {
-        &self.position
-    }
-
-    pub fn dist_from_origin(&self) -> &f64 {
-        &self.dist_from_origin
-    }
-
-    pub fn normal(&self) -> Vector3<f64> {
-        self.shape.normal_at_collision(self)
-    }
-}
 
 pub trait Shape {
     fn collide(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<Collision>;
 
-    fn normal_at_collision(&self, collision: &Collision) -> Vector3<f64>;
+    fn normal_at_position(&self, position: &Vector3<f64>) -> Vector3<f64>;
+
+    fn material(&self) -> &dyn Material;
 }
