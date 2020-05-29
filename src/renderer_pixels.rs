@@ -6,7 +6,6 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
-use std::cell::RefCell;
 use std::sync::{Arc, Mutex};
 
 use nalgebra::Vector3;
@@ -19,7 +18,7 @@ struct Size {
 }
 
 pub struct RendererPixels {
-    world: World,
+    world: Arc<Mutex<World>>,
 
 }
 
@@ -27,24 +26,30 @@ impl RendererPixels {
     pub fn new(height: usize, width: usize, samples_per_pixel: i64) -> Self {
 
         let new = Self {
-            world: World::new(height, width, samples_per_pixel)
+            world: Arc::new(Mutex::new(World::new(height, width, samples_per_pixel)))
         };
 //        new.start_rendering();
         new
     }
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
-        self.world.set_pixel(x, y, color)
+    pub fn set_pixel(&mut self) -> Box<dyn Fn(usize, usize, Color)+Send> {
+        let world_accessor = Arc::clone(&self.world);
+        Box::new(move |x, y, color| {
+            let mut world = world_accessor.lock().unwrap();
+            world.set_pixel(x, y, color)
+        })
     }
     pub fn render(&self) {
   
     }
 
-    pub fn start_rendering(mut self)
+    pub fn start_rendering(&mut self)
     {
-        let event_loop = EventLoop::new();
+        let world_accessor = Arc::clone(&self.world);
+        let world = world_accessor.lock().unwrap();
         let mut input = WinitInputHelper::new();
+        let event_loop = EventLoop::new();
         let window = {
-            let size = LogicalSize::new(self.world.size.width as f64, self.world.size.height as f64);
+            let size = LogicalSize::new(world.size.width as f64, world.size.height as f64);
             WindowBuilder::new()
                 .with_title("Hello Pixels")
                 .with_inner_size(size)
@@ -56,14 +61,17 @@ impl RendererPixels {
 
         let mut pixels = {
             let surface = Surface::create(&window);
-            let surface_texture = SurfaceTexture::new(self.world.size.width as u32, self.world.size.height as u32, surface);
-            Pixels::new(self.world.size.width as u32, self.world.size.height as u32, surface_texture).unwrap()
+            let surface_texture = SurfaceTexture::new(world.size.width as u32, world.size.height as u32, surface);
+            Pixels::new(world.size.width as u32, world.size.height as u32, surface_texture).unwrap()
         };
 
+        let size = world.size.clone();
+        drop(world);
         event_loop.run(move |event, _, control_flow| {
+            let mut world = world_accessor.lock().unwrap();
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
-                self.world.draw(pixels.get_frame());
+                world.draw(pixels.get_frame());
                 if pixels
                     .render()
                     .map_err(|e| error!("pixels.render() failed: {}", e))
@@ -93,7 +101,7 @@ impl RendererPixels {
                 }
 
                 // Update internal state and request a redraw
-                self.world.update();
+                world.update();
                 window.request_redraw();
             }
         });
