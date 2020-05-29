@@ -19,6 +19,8 @@ mod rand_range_f64;
 mod ray;
 mod shapes;
 mod renderer;
+#[cfg(feature = "pixels_lib")]
+mod renderer_pixels;
 
 const SAMPLES_PER_PIXEL: i64 = 50;
 
@@ -31,8 +33,11 @@ fn main_loop() {
     let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
     let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
     let scene: Vec<&dyn Shape> = vec![&sphere, &sphere2, &sphere3];
+    #[cfg(feature = "pixels_lib")]
+    let mut renderer = renderer_pixels::RendererPixels::new(height as usize, width as usize, SAMPLES_PER_PIXEL);
+    #[cfg(not(feature = "pixels_lib"))]
     let mut renderer = renderer::RendererPPM::new(height as usize, width as usize, SAMPLES_PER_PIXEL);
-
+    
     eprint!("Scanlines remaining:\n");
     for y in (0..(height as i64)).rev() {
         eprint!("\r{} <= {}", height, height as i64 - y);
@@ -50,6 +55,7 @@ fn main_loop() {
     }
     eprint!("\nDone! :-)\n");
     renderer.render();
+    renderer.start_rendering();
 }
 
 fn main() -> std::io::Result<()> {

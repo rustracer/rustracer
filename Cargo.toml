@@ -6,9 +6,18 @@ edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+
+[features]
+pixels_lib = ["pixels", "winit", "winit_input_helper"]
+
 [dependencies]
 nalgebra = "0.18"
 lazy_static = "1.4.0"
+pixels = { version = "0.0.4", optional = true }
+winit = { version = "*", optional = true }
+winit_input_helper = { version = "*", optional = true }
+env_logger = "0.7.1"
+log = { version = "0.4.8", features = [ "release_max_level_warn" ] }
 
 [dependencies.rand]
 version = "0.7"
