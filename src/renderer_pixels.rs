@@ -65,7 +65,6 @@ impl RendererPixels {
             Pixels::new(world.size.width as u32, world.size.height as u32, surface_texture).unwrap()
         };
 
-        let size = world.size.clone();
         drop(world);
         event_loop.run(move |event, _, control_flow| {
             let mut world = world_accessor.lock().unwrap();
