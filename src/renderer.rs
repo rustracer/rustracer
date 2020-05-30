@@ -17,11 +17,11 @@ impl RendererPPM {
     pub fn new(height: usize, width: usize, samples_per_pixel: i64) -> Self {
         let count = width * height;
         let mut v = Vec::with_capacity(count);
-        v.resize_with(count, || Vector3::new(0.0,0.0,0.0));
+        v.resize_with(count, || Vector3::new(0.0, 0.0, 0.0));
         Self {
             pixels: v,
-            size: Size{width, height},
-            samples_per_pixel
+            size: Size { width, height },
+            samples_per_pixel,
         }
     }
     pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
@@ -32,7 +32,7 @@ impl RendererPPM {
         for y in (0..self.size.height).rev() {
             for x in 0..self.size.width {
                 let color = self.pixels[y * self.size.width + x];
-                
+
                 let scale = 1.0 / self.samples_per_pixel as f64;
                 let ir = (255.999 * (color[0] * scale).clamp(0.0, 1.0).sqrt()) as i64;
                 let ig = (255.999 * (color[1] * scale).clamp(0.0, 1.0).sqrt()) as i64;

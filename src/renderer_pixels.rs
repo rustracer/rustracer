@@ -1,12 +1,15 @@
 use log::error;
-use pixels::{wgpu::Surface, Error, Pixels, SurfaceTexture};
+use pixels::{wgpu::Surface, Pixels, SurfaceTexture};
 use winit::dpi::LogicalSize;
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, RwLock},
+    time::Instant,
+};
 
 use nalgebra::Vector3;
 
@@ -18,34 +21,27 @@ struct Size {
 }
 
 pub struct RendererPixels {
-    world: Arc<Mutex<World>>,
-
+    world: Arc<RwLock<World>>,
 }
 
 impl RendererPixels {
     pub fn new(height: usize, width: usize, samples_per_pixel: i64) -> Self {
-
         let new = Self {
-            world: Arc::new(Mutex::new(World::new(height, width, samples_per_pixel)))
+            world: Arc::new(RwLock::new(World::new(height, width, samples_per_pixel))),
         };
-//        new.start_rendering();
         new
     }
-    pub fn set_pixel(&mut self) -> Box<dyn Fn(usize, usize, Color)+Send> {
+    pub fn set_pixel(&mut self) -> Box<dyn Fn(usize, usize, Color) + Send> {
         let world_accessor = Arc::clone(&self.world);
         Box::new(move |x, y, color| {
-            let mut world = world_accessor.lock().unwrap();
+            let mut world = world_accessor.write().unwrap();
             world.set_pixel(x, y, color)
         })
     }
-    pub fn render(&self) {
-  
-    }
 
-    pub fn start_rendering(&mut self)
-    {
+    pub fn start_rendering(&mut self) {
         let world_accessor = Arc::clone(&self.world);
-        let world = world_accessor.lock().unwrap();
+        let world = world_accessor.read().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
         let window = {
@@ -57,17 +53,23 @@ impl RendererPixels {
                 .build(&event_loop)
                 .unwrap()
         };
-        let mut hidpi_factor = window.scale_factor();
-
         let mut pixels = {
             let surface = Surface::create(&window);
-            let surface_texture = SurfaceTexture::new(world.size.width as u32, world.size.height as u32, surface);
-            Pixels::new(world.size.width as u32, world.size.height as u32, surface_texture).unwrap()
+            let surface_texture =
+                SurfaceTexture::new(world.size.width as u32, world.size.height as u32, surface);
+            Pixels::new(
+                world.size.width as u32,
+                world.size.height as u32,
+                surface_texture,
+            )
+            .unwrap()
         };
 
         drop(world);
+
+        let mut last_time = Instant::now();
         event_loop.run(move |event, _, control_flow| {
-            let mut world = world_accessor.lock().unwrap();
+            let world = world_accessor.read().unwrap();
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
                 world.draw(pixels.get_frame());
@@ -80,7 +82,6 @@ impl RendererPixels {
                     return;
                 }
             }
-
             // Handle input events
             if input.update(event) {
                 // Close events
@@ -88,20 +89,17 @@ impl RendererPixels {
                     *control_flow = ControlFlow::Exit;
                     return;
                 }
-
-                // Adjust high DPI factor
-                if let Some(factor) = input.scale_factor_changed() {
-                    hidpi_factor = factor;
-                }
-
                 // Resize the window
                 if let Some(size) = input.window_resized() {
                     pixels.resize(size.width, size.height);
                 }
 
-                // Update internal state and request a redraw
-                world.update();
-                window.request_redraw();
+                // dynamic time step from : https://gameprogrammingpatterns.com/game-loop.html
+                let elapsed = last_time.elapsed().as_secs_f32();
+                if dbg!(elapsed) > 1.0 / 30.0 {
+                    last_time = Instant::now();
+                    window.request_redraw();
+                }
             }
         });
     }
@@ -113,24 +111,18 @@ struct World {
     samples_per_pixel: i64,
 }
 impl World {
-    
     fn new(height: usize, width: usize, samples_per_pixel: i64) -> Self {
         let count = width * height;
         let mut v = Vec::with_capacity(count);
-        v.resize_with(count, || Vector3::new(0.0,0.0,0.0));
+        v.resize_with(count, || Vector3::new(0.0, 0.0, 0.0));
         Self {
             pixels: v,
-            size: Size{width, height},
+            size: Size { width, height },
             samples_per_pixel,
         }
     }
     pub fn set_pixel(&mut self, x: usize, y: usize, color: Color) {
         self.pixels[y * self.size.width + x] = color;
-    }
-
-    /// Update the `World` internal state; bounce the box around the screen.
-    fn update(&mut self) {
-        
     }
 
     /// Draw the `World` state to the frame buffer.
@@ -146,7 +138,7 @@ impl World {
             let ir = (255.999 * (color[0] * scale).clamp(0.0, 1.0).sqrt()) as i64;
             let ig = (255.999 * (color[1] * scale).clamp(0.0, 1.0).sqrt()) as i64;
             let ib = (255.999 * (color[2] * scale).clamp(0.0, 1.0).sqrt()) as i64;
-            
+
             let rgba = [ir as u8, ig as u8, ib as u8, 0xff];
 
             pixel.copy_from_slice(&rgba);
