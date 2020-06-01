@@ -4,10 +4,7 @@
 use nalgebra::Vector3;
 
 use crate::camera::Camera;
-use crate::collision::Collision;
-use crate::materials::lambertian_diffuse::random_unit_vector;
 use crate::rand_range_f64::rand_range_f64;
-use crate::ray::Ray;
 use crate::renderer::Color;
 use crate::shapes::shape::Shape;
 use crate::shapes::sphere::Sphere;
@@ -20,7 +17,7 @@ mod ray;
 mod renderer;
 mod shapes;
 
-const SAMPLES_PER_PIXEL: i64 = 1;
+const SAMPLES_PER_PIXEL: i64 = 4;
 
 fn main_loop() {
     let camera = Camera::new();
