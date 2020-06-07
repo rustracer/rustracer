@@ -47,25 +47,7 @@ fn main_loop() {
 
         let scale = 1.0 / SAMPLES_PER_PIXEL as f64;
 
-        let mut random_y: Vec<i64> = (0..height as i64).rev().collect();
-        let mut random_x: Vec<i64> = (0..width as i64).rev().collect();
-        shuffle(random_y.as_mut_slice());
-        let mut random_positions: Vec<PixelPosition> = random_y
-            .iter()
-            .flat_map(|y| -> Vec<PixelPosition> {
-                shuffle(random_x.as_mut_slice());
-                random_x
-                    .iter()
-                    .map(|x| -> PixelPosition {
-                        PixelPosition {
-                            y: *y as usize,
-                            x: *x as usize,
-                        }
-                    })
-                    .collect()
-            })
-            .collect();
-        shuffle(random_positions.as_mut_slice());
+        let random_positions = all_pixels_at_random(height as i64, width as i64);
 
         for pos in random_positions {
             let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
@@ -85,6 +67,29 @@ fn main_loop() {
     });
     renderer.start_rendering();
     eprint!("\nDone! :-)\n");
+}
+
+fn all_pixels_at_random(height: i64, width: i64) -> Vec<PixelPosition> {
+    let mut random_y: Vec<i64> = (0..height).rev().collect();
+    let mut random_x: Vec<i64> = (0..width).rev().collect();
+    shuffle(random_y.as_mut_slice());
+    let mut random_positions: Vec<PixelPosition> = random_y
+        .iter()
+        .flat_map(|y| -> Vec<PixelPosition> {
+            shuffle(random_x.as_mut_slice());
+            random_x
+                .iter()
+                .map(|x| -> PixelPosition {
+                    PixelPosition {
+                        y: *y as usize,
+                        x: *x as usize,
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    shuffle(random_positions.as_mut_slice());
+    random_positions
 }
 
 fn main() -> std::io::Result<()> {
