@@ -1,10 +1,11 @@
-use crate::collision::Collision;
+use crate::shapes::collision::Collision;
 use crate::shapes::shape::Shape;
-use crate::Color;
 use nalgebra::Vector3;
 
 const T_MIN: f64 = 0.001;
 const T_MAX: f64 = 100_000.0;
+
+pub type Color = Vector3<f64>;
 
 pub struct Ray {
     origin: Vector3<f64>,

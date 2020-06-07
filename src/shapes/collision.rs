@@ -1,8 +1,7 @@
 use nalgebra::Vector3;
 
-use crate::ray::Ray;
+use crate::shapes::ray::{Color, Ray};
 use crate::shapes::shape::Shape;
-use crate::Color;
 
 pub struct Collision<'a> {
     dist_from_origin: f64,

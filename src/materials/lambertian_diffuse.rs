@@ -1,12 +1,11 @@
 use std::f64::consts::{PI, TAU};
 
-use nalgebra::{max, Vector3};
+use nalgebra::Vector3;
 
-use crate::collision::Collision;
 use crate::materials::material::Material;
 use crate::rand_range_f64::rand_range_f64;
-use crate::ray::Ray;
-use crate::Color;
+use crate::shapes::collision::Collision;
+use crate::shapes::ray::{Color, Ray};
 
 pub struct Lambertian {
     albedo: f64,
