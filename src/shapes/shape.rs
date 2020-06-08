@@ -1,7 +1,8 @@
-use crate::collision::Collision;
-use crate::materials::material::Material;
-use crate::ray::Ray;
 use nalgebra::Vector3;
+
+use crate::materials::material::Material;
+use crate::shapes::collision::Collision;
+use crate::shapes::ray::Ray;
 
 pub trait Shape {
     fn collide(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<Collision>;

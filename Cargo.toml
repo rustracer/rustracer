@@ -9,6 +9,11 @@ edition = "2018"
 [dependencies]
 nalgebra = "0.18"
 lazy_static = "1.4.0"
+pixels = "0.0.4"
+winit = "*"
+winit_input_helper = "*"
+env_logger = "0.7.1"
+log = { version = "0.4.8", features = [ "release_max_level_warn" ] }
 
 [dependencies.rand]
 version = "0.7"
