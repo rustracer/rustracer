@@ -19,13 +19,13 @@ struct Size {
 }
 
 pub struct RendererPixels {
-    world: Arc<Mutex<Window>>,
+    world: Arc<Mutex<World>>,
 }
 
 impl Renderer for RendererPixels {
     fn new(dimensions: Dimensions) -> Self {
         let new = Self {
-            world: Arc::new(Mutex::new(Window::new(dimensions.height, dimensions.width))),
+            world: Arc::new(Mutex::new(World::new(dimensions.height, dimensions.width))),
         };
         //        new.start_rendering();
         new
@@ -46,7 +46,8 @@ impl Renderer for RendererPixels {
         let world = world_accessor.lock().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
-        let world = {
+
+        let window = {
             let size = LogicalSize::new(world.size.width as f64, world.size.height as f64);
             WindowBuilder::new()
                 .with_title("Hello Pixels")
@@ -55,10 +56,9 @@ impl Renderer for RendererPixels {
                 .build(&event_loop)
                 .unwrap()
         };
-        let mut hidpi_factor = world.scale_factor();
-
+        let mut hidpi_factor = window.scale_factor();
         let mut pixels = {
-            let surface = Surface::create(&world);
+            let surface = Surface::create(&window);
             let surface_texture =
                 SurfaceTexture::new(world.size.width as u32, world.size.height as u32, surface);
             Pixels::new(
@@ -68,8 +68,7 @@ impl Renderer for RendererPixels {
             )
             .unwrap()
         };
-
-        drop(world);
+        drop(window);
         event_loop.run(move |event, _, control_flow| {
             let mut world = world_accessor.lock().unwrap();
             // Draw the current frame
@@ -106,19 +105,19 @@ impl Renderer for RendererPixels {
                 // Update internal state and request a redraw
                 if rand_range_f64(0.0, 1.0) < 0.001 {
                     world.update();
-                    world.request_redraw();
+                    window.request_redraw();
                 }
             }
         });
     }
 }
 
-struct Window {
+struct World {
     pixels: Vec<PixelColor>,
     size: Size,
 }
 
-impl Window {
+impl World {
     fn new(height: usize, width: usize) -> Self {
         let count = width * height;
         let mut v = Vec::with_capacity(count);

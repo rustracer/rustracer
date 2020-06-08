@@ -1,8 +1,20 @@
+use nalgebra::Vector3;
+
 #[derive(Debug, Clone, Copy)]
 pub struct PixelColor {
     pub r: u8,
     pub g: u8,
     pub b: u8,
+}
+
+impl From<Vector3<f64>> for PixelColor {
+    fn from(vector3: Vector3<f64>) -> Self {
+        Self {
+            r: vector3.x as u8,
+            g: vector3.y as u8,
+            b: vector3.z as u8,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
