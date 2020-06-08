@@ -46,7 +46,7 @@ impl Renderer for RendererPixels {
         let world = world_accessor.lock().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
-        let wolrd = {
+        let world = {
             let size = LogicalSize::new(world.size.width as f64, world.size.height as f64);
             WindowBuilder::new()
                 .with_title("Hello Pixels")
@@ -55,10 +55,10 @@ impl Renderer for RendererPixels {
                 .build(&event_loop)
                 .unwrap()
         };
-        let mut hidpi_factor = wolrd.scale_factor();
+        let mut hidpi_factor = world.scale_factor();
 
         let mut pixels = {
-            let surface = Surface::create(&wolrd);
+            let surface = Surface::create(&world);
             let surface_texture =
                 SurfaceTexture::new(world.size.width as u32, world.size.height as u32, surface);
             Pixels::new(
@@ -106,7 +106,7 @@ impl Renderer for RendererPixels {
                 // Update internal state and request a redraw
                 if rand_range_f64(0.0, 1.0) < 0.001 {
                     world.update();
-                    wolrd.request_redraw();
+                    world.request_redraw();
                 }
             }
         });

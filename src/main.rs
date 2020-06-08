@@ -1,7 +1,6 @@
 #![feature(tau_constant)]
 #![feature(clamp)]
 
-use std::borrow::BorrowMut;
 use std::thread;
 
 use nalgebra::Vector3;
@@ -32,11 +31,7 @@ fn main_loop() {
         height: height as usize,
         width: width as usize,
     });
-    // #[cfg(not(feature = "pixels_lib"))]
-    /*let mut renderer = ppm::RendererPPM::new(Dimensions {
-        height: height as usize,
-        width: width as usize,
-    });*/
+
     let mut set_pixel = renderer.pixel_accessor();
     eprint!("Scanlines remaining:\n");
     let handle = thread::spawn(move || {
