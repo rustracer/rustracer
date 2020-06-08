@@ -1,6 +1,5 @@
+use crate::shapes::ray::Ray;
 use nalgebra::Vector3;
-
-use crate::ray::Ray;
 
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 const VIEWPORT_HEIGHT: f64 = 2.0;

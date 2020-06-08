@@ -1,8 +1,5 @@
-use nalgebra::Vector3;
-
-use crate::collision::Collision;
-use crate::ray::Ray;
-use crate::Color;
+use crate::shapes::collision::Collision;
+use crate::shapes::ray::{Color, Ray};
 
 pub trait Material {
     fn scatter(&self, ray: &Ray, collision: &Collision) -> Color;

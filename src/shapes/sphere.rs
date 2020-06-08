@@ -1,10 +1,11 @@
 use nalgebra::Vector3;
 
-use super::shape::Shape;
-use crate::collision::Collision;
 use crate::materials::lambertian_diffuse::Lambertian;
 use crate::materials::material::Material;
-use crate::ray::Ray;
+
+use super::shape::Shape;
+use crate::shapes::collision::Collision;
+use crate::shapes::ray::Ray;
 
 pub struct Sphere {
     center: Vector3<f64>,
