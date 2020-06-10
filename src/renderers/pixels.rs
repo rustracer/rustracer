@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use log::error;
 use pixels::wgpu::Surface;
@@ -20,13 +20,13 @@ struct Size {
 }
 
 pub struct RendererPixels {
-    world: Arc<Mutex<World>>,
+    world: Arc<RwLock<World>>,
 }
 
 impl Renderer for RendererPixels {
     fn new(dimensions: Dimensions) -> Self {
         let new = Self {
-            world: Arc::new(Mutex::new(World::new(dimensions.height, dimensions.width))),
+            world: Arc::new(RwLock::new(World::new(dimensions.height, dimensions.width))),
         };
         //        new.start_rendering();
         new
@@ -35,7 +35,7 @@ impl Renderer for RendererPixels {
     fn pixel_accessor(&mut self) -> Box<PixelAccessor> {
         let world_accessor = Arc::clone(&self.world);
         Box::new(move |position, color| {
-            let mut world = world_accessor.lock().unwrap();
+            let mut world = world_accessor.write().unwrap();
             world.set_pixel(position.x, position.y, color)
         })
     }
@@ -44,7 +44,7 @@ impl Renderer for RendererPixels {
 
     fn start_rendering(&mut self) {
         let world_accessor = Arc::clone(&self.world);
-        let world = world_accessor.lock().unwrap();
+        let world = world_accessor.write().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
 
@@ -72,7 +72,7 @@ impl Renderer for RendererPixels {
         drop(world);
         let mut last_time = Instant::now();
         event_loop.run(move |event, _, control_flow| {
-            let mut world = world_accessor.lock().unwrap();
+            let mut world = world_accessor.write().unwrap();
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
                 world.draw(pixels.get_frame());
