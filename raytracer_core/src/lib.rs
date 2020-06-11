@@ -1,48 +1,59 @@
 #![feature(tau_constant)]
 #![feature(clamp)]
+#![feature(associated_type_bounds)]
 
 use std::thread;
 
-use nalgebra::Vector3;
+pub use nalgebra::Vector3;
 
 use crate::camera::Camera;
 use crate::rand_range_f64::rand_range_f64;
 use crate::rand_range_f64::shuffle;
-use crate::renderers::pixels::RendererPixels;
-use crate::renderers::renderer::{Dimensions, PixelColor, PixelPosition, Renderer};
 use crate::shapes::shape::Shape;
 use crate::shapes::sphere::Sphere;
 
 mod camera;
 mod materials;
 mod rand_range_f64;
-mod renderers;
-mod shapes;
+pub mod shapes;
 
-const SAMPLES_PER_PIXEL: i64 = 4;
+/// Imported from renderers:
 
-fn main_loop() {
-    let camera = Camera::new();
-    let width = 1920.0;
-    let height = 1080.0;
+#[derive(Debug, Clone, Copy)]
+pub struct PixelColor {
+    pub r: u8,
+    pub g: u8,
+    pub b: u8,
+}
+impl From<Vector3<f64>> for PixelColor {
+    fn from(vector3: Vector3<f64>) -> Self {
+        Self {
+            r: vector3.x as u8,
+            g: vector3.y as u8,
+            b: vector3.z as u8,
+        }
+    }
+}
+pub struct PixelPosition {
+    pub x: usize,
+    pub y: usize,
+}
+pub type PixelAccessor = Fn(PixelPosition, PixelColor) + Send;
+///
 
-    let mut renderer = RendererPixels::new(Dimensions {
-        height: height as usize,
-        width: width as usize,
-    });
+pub type Scene<'a> = Vec<&'a dyn Shape>;
 
-    let mut set_pixel = renderer.pixel_accessor();
-    eprint!("Scanlines remaining:\n");
-    let handle = thread::spawn(move || {
-        let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
-        let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
-        let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
-        let scene: Vec<&dyn Shape> = vec![&sphere, &sphere2, &sphere3];
+pub struct Raytracer {
 
-        let scale = 1.0 / SAMPLES_PER_PIXEL as f64;
-
+}
+impl Raytracer {
+    pub fn generate<T, R>(&self, width: f64, height: f64, scene: Scene, SAMPLES_PER_PIXEL: i64, set_pixel: T, get_random_f64: R)
+            where T: Fn(PixelPosition, PixelColor) + Send,
+            R: Fn(f64, f64) -> f64 + 'static + Send {
+        rand_range_f64::init_RNG(get_random_f64);
+        let camera = Camera::new();
         let random_positions = all_pixels_at_random(height as i64, width as i64);
-
+        let scale = 1.0 / SAMPLES_PER_PIXEL as f64;
         for pos in random_positions {
             let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
             for _s in 0..SAMPLES_PER_PIXEL {
@@ -51,7 +62,7 @@ fn main_loop() {
                 let r = camera.emit_ray_at(offset_x, offset_y);
                 samples_color += r.project_ray(&scene);
             }
-
+    
             let scale = 1.0 / SAMPLES_PER_PIXEL as f64;
             let corrected_pixel_color = (samples_color * scale)
                 .map(|c| c.clamp(0.0, 1.0))
@@ -59,10 +70,8 @@ fn main_loop() {
                 .map(|c| c * 255.0);
             set_pixel(pos, PixelColor::from(corrected_pixel_color));
         }
-    });
-    renderer.start_rendering();
+    }
 
-    eprint!("\nDone! :-)\n");
 }
 
 fn all_pixels_at_random(height: i64, width: i64) -> Vec<PixelPosition> {
@@ -86,9 +95,4 @@ fn all_pixels_at_random(height: i64, width: i64) -> Vec<PixelPosition> {
         .collect();
     shuffle(random_positions.as_mut_slice());
     random_positions
-}
-
-fn main() -> std::io::Result<()> {
-    main_loop();
-    Ok(())
 }
