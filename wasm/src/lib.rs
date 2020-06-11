@@ -9,7 +9,8 @@ use rand::prelude::*;
 // use rand_core::{RngCore, OsRng};
 
 // Define the size of our camera
-const SIZE: usize = 200;
+const WIDTH: usize = 1920 / 5;
+const HEIGHT: usize = 1080 / 5;
 
 const SAMPLES_PER_PIXEL: i64 = 64;
 
@@ -25,7 +26,7 @@ const SAMPLES_PER_PIXEL: i64 = 64;
  * We want to have 200 pixels by 200 pixels. And 4 colors per pixel (r,g,b,a)
  * Which, the Canvas API Supports.
  */
-const OUTPUT_BUFFER_SIZE: usize = SIZE * SIZE * 4;
+const OUTPUT_BUFFER_SIZE: usize = HEIGHT * WIDTH * 4;
 static mut OUTPUT_BUFFER: [u8; OUTPUT_BUFFER_SIZE] = [0; OUTPUT_BUFFER_SIZE];
 
 #[wasm_bindgen]
@@ -48,7 +49,7 @@ pub fn get_output_buffer_pointer() -> *const u8 {
 fn set_pixel(position: PixelPosition, c: PixelColor) {
   // Let's calculate our index, using our 2d -> 1d mapping.
   // And then multiple by 4, for each pixel property (r,g,b,a).
-  let square_number: usize = (SIZE * SIZE) - (position.y * SIZE + position.x) - 1;
+  let square_number: usize = (WIDTH * HEIGHT) - (position.y * WIDTH + position.x) - 1;
   let square_rgba_index: usize = square_number * 4;
 
   unsafe {
@@ -63,6 +64,16 @@ fn get_random_f64(inclusive: f64, exclusive: f64) -> f64 {
   rand::thread_rng().gen_range(inclusive, exclusive)
 }
 
+#[wasm_bindgen]
+pub fn get_height() -> usize {
+  return HEIGHT;
+}
+
+#[wasm_bindgen]
+pub fn get_width() -> usize {
+  return WIDTH;
+}
+
 // Function to generate our checkerboard, pixel by pixel
 #[wasm_bindgen]
 pub fn render() {
@@ -71,5 +82,5 @@ pub fn render() {
       let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
       let scene: Scene = vec![&sphere, &sphere2, &sphere3];
       let raytracer = Raytracer{};
-      raytracer.generate(SIZE as f64, SIZE as f64, scene, SAMPLES_PER_PIXEL, set_pixel, get_random_f64);
+      raytracer.generate(WIDTH as f64, HEIGHT as f64, scene, SAMPLES_PER_PIXEL, set_pixel, get_random_f64);
 }

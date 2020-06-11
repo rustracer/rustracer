@@ -11,6 +11,11 @@ const runWasm = async () => {
   // Get our canvas element from our index.html
   const canvasElement = document.querySelector("canvas");
 
+  const width = rustWasm.get_width();
+  const height = rustWasm.get_height();
+  canvasElement.width = width;
+  canvasElement.height = height;
+  
   // Set up Context and ImageData on the canvas
   const canvasContext = canvasElement.getContext("2d");
   const canvasImageData = canvasContext.createImageData(
@@ -21,8 +26,8 @@ const runWasm = async () => {
   // Clear the canvas
   canvasContext.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
+
   const drawScene = () => {
-    const checkerBoardSize = 200;
 
     // Generate a new scene in wasm
     rustWasm.render();
@@ -36,9 +41,8 @@ const runWasm = async () => {
     const outputPointer = rustWasm.get_output_buffer_pointer();
     const imageDataArray = wasmByteMemoryArray.slice(
       outputPointer,
-      outputPointer + checkerBoardSize * checkerBoardSize * 4
+      outputPointer + width * height * 4
     );
-
     // Set the values to the canvas image data
     canvasImageData.data.set(imageDataArray);
 
