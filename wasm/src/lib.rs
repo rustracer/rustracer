@@ -2,10 +2,10 @@
 // Import the wasm-bindgen crate.
 use wasm_bindgen::prelude::*;
 
-use raytracer_core::Vector3;
-use raytracer_core::shapes::sphere::Sphere;
-use raytracer_core::{Scene, Raytracer, PixelColor, PixelPosition};
 use rand::prelude::*;
+use raytracer_core::shapes::sphere::Sphere;
+use raytracer_core::Vector3;
+use raytracer_core::{PixelColor, PixelPosition, Raytracer, Scene};
 // use rand_core::{RngCore, OsRng};
 
 // Define the size of our camera
@@ -38,49 +38,56 @@ pub fn init_panic_hook() {
 // in wasm memory
 #[wasm_bindgen]
 pub fn get_output_buffer_pointer() -> *const u8 {
-  let pointer: *const u8;
-  unsafe {
-    pointer = OUTPUT_BUFFER.as_ptr();
-  }
+    let pointer: *const u8;
+    unsafe {
+        pointer = OUTPUT_BUFFER.as_ptr();
+    }
 
-  return pointer;
+    return pointer;
 }
 
 fn set_pixel(position: PixelPosition, c: PixelColor) {
-  // Let's calculate our index, using our 2d -> 1d mapping.
-  // And then multiple by 4, for each pixel property (r,g,b,a).
-  let square_number: usize = (WIDTH * HEIGHT) - (position.y * WIDTH + position.x) - 1;
-  let square_rgba_index: usize = square_number * 4;
+    // Let's calculate our index, using our 2d -> 1d mapping.
+    // And then multiple by 4, for each pixel property (r,g,b,a).
+    let square_number: usize = (WIDTH * HEIGHT) - (position.y * WIDTH + position.x) - 1;
+    let square_rgba_index: usize = square_number * 4;
 
-  unsafe {
-    OUTPUT_BUFFER[square_rgba_index + 0] = c.r; // Red
-    OUTPUT_BUFFER[square_rgba_index + 1] = c.g; // Green
-    OUTPUT_BUFFER[square_rgba_index + 2] = c.b; // Blue
-    OUTPUT_BUFFER[square_rgba_index + 3] = 255; // Alpha (Always Opaque)
-  }
+    unsafe {
+        OUTPUT_BUFFER[square_rgba_index + 0] = c.r; // Red
+        OUTPUT_BUFFER[square_rgba_index + 1] = c.g; // Green
+        OUTPUT_BUFFER[square_rgba_index + 2] = c.b; // Blue
+        OUTPUT_BUFFER[square_rgba_index + 3] = 255; // Alpha (Always Opaque)
+    }
 }
 
 fn get_random_f64(inclusive: f64, exclusive: f64) -> f64 {
-  rand::thread_rng().gen_range(inclusive, exclusive)
+    rand::thread_rng().gen_range(inclusive, exclusive)
 }
 
 #[wasm_bindgen]
 pub fn get_height() -> usize {
-  return HEIGHT;
+    return HEIGHT;
 }
 
 #[wasm_bindgen]
 pub fn get_width() -> usize {
-  return WIDTH;
+    return WIDTH;
 }
 
 // Function to generate our checkerboard, pixel by pixel
 #[wasm_bindgen]
 pub fn render() {
-      let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
-      let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
-      let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
-      let scene: Scene = vec![&sphere, &sphere2, &sphere3];
-      let raytracer = Raytracer{};
-      raytracer.generate(WIDTH as f64, HEIGHT as f64, scene, SAMPLES_PER_PIXEL, set_pixel, get_random_f64);
+    let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
+    let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
+    let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
+    let scene: Scene = vec![&sphere, &sphere2, &sphere3];
+    let raytracer = Raytracer {};
+    raytracer.generate(
+        WIDTH as f64,
+        HEIGHT as f64,
+        scene,
+        SAMPLES_PER_PIXEL,
+        set_pixel,
+        get_random_f64,
+    );
 }
