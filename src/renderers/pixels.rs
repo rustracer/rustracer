@@ -44,7 +44,7 @@ impl Renderer for RendererPixels {
 
     fn start_rendering(&mut self) {
         let world_accessor = Arc::clone(&self.world);
-        let world = world_accessor.write().unwrap();
+        let world = world_accessor.read().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
 
@@ -72,7 +72,7 @@ impl Renderer for RendererPixels {
         drop(world);
         let mut last_time = Instant::now();
         event_loop.run(move |event, _, control_flow| {
-            let mut world = world_accessor.write().unwrap();
+            let world = world_accessor.write().unwrap();
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
                 world.draw(pixels.get_frame());
