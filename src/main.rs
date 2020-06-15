@@ -23,8 +23,8 @@ const SAMPLES_PER_PIXEL: i64 = 4;
 
 fn main_loop() {
     let camera = Camera::new();
-    let width = 640.0;
-    let height = 360.0;
+    let width = 1920.0;
+    let height = 1080.0;
 
     let mut renderer = RendererPixels::new(Dimensions {
         height: height as usize,
@@ -51,18 +51,6 @@ fn main_loop() {
                 let r = camera.emit_ray_at(offset_x, offset_y);
                 samples_color += r.project_ray(&scene);
             }
-            /*
-            <<<<<<< HEAD
-                        let pixel_color = PixelColor {
-                            r: ((samples_color.x * scale).clamp(0.0, 1.0).sqrt() * 255.0) as u8,
-                            g: ((samples_color.y * scale).clamp(0.0, 1.0).sqrt() * 255.0) as u8,
-                            b: ((samples_color.z * scale).clamp(0.0, 1.0).sqrt() * 255.0) as u8,
-                        };
-                        set_pixel(pos, pixel_color);
-                    }
-                });
-            =======
-            */
 
             let scale = 1.0 / SAMPLES_PER_PIXEL as f64;
             let corrected_pixel_color = (samples_color * scale)

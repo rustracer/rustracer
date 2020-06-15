@@ -1,17 +1,18 @@
-use std::sync::atomic::{AtomicU16, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use log::error;
 use pixels::wgpu::Surface;
 use pixels::{Pixels, SurfaceTexture};
-use winit::dpi::LogicalSize;
-use winit::event::{Event, VirtualKeyCode};
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::WindowBuilder;
+use winit::{
+    dpi::LogicalSize,
+    event::{Event, VirtualKeyCode},
+    event_loop::{ControlFlow, EventLoop},
+    window::WindowBuilder,
+};
 use winit_input_helper::WinitInputHelper;
 
-use crate::rand_range_f64::rand_range_f64;
 use crate::renderers::renderer::{Dimensions, PixelAccessor, PixelColor, Renderer};
+use std::time::Instant;
 
 struct Size {
     width: usize,
@@ -19,13 +20,13 @@ struct Size {
 }
 
 pub struct RendererPixels {
-    world: Arc<Mutex<World>>,
+    world: Arc<RwLock<World>>,
 }
 
 impl Renderer for RendererPixels {
     fn new(dimensions: Dimensions) -> Self {
         let new = Self {
-            world: Arc::new(Mutex::new(World::new(dimensions.height, dimensions.width))),
+            world: Arc::new(RwLock::new(World::new(dimensions.height, dimensions.width))),
         };
         //        new.start_rendering();
         new
@@ -34,7 +35,7 @@ impl Renderer for RendererPixels {
     fn pixel_accessor(&mut self) -> Box<PixelAccessor> {
         let world_accessor = Arc::clone(&self.world);
         Box::new(move |position, color| {
-            let mut world = world_accessor.lock().unwrap();
+            let mut world = world_accessor.write().unwrap();
             world.set_pixel(position.x, position.y, color)
         })
     }
@@ -43,7 +44,7 @@ impl Renderer for RendererPixels {
 
     fn start_rendering(&mut self) {
         let world_accessor = Arc::clone(&self.world);
-        let world = world_accessor.lock().unwrap();
+        let world = world_accessor.read().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
 
@@ -68,9 +69,10 @@ impl Renderer for RendererPixels {
             )
             .unwrap()
         };
-        drop(window);
+        drop(world);
+        let mut last_time = Instant::now();
         event_loop.run(move |event, _, control_flow| {
-            let mut world = world_accessor.lock().unwrap();
+            let world = world_accessor.write().unwrap();
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
                 world.draw(pixels.get_frame());
@@ -85,7 +87,7 @@ impl Renderer for RendererPixels {
             }
 
             // Handle input events
-            if input.update(event) {
+            if input.update(&event) {
                 // Close events
                 if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
                     *control_flow = ControlFlow::Exit;
@@ -102,9 +104,10 @@ impl Renderer for RendererPixels {
                     pixels.resize(size.width, size.height);
                 }
 
-                // Update internal state and request a redraw
-                if rand_range_f64(0.0, 1.0) < 0.001 {
-                    world.update();
+                // dynamic time step from : https://gameprogrammingpatterns.com/game-loop.html
+                let elapsed = last_time.elapsed().as_secs_f32();
+                if elapsed > 1.0 / 10.0 {
+                    last_time = Instant::now();
                     window.request_redraw();
                 }
             }
