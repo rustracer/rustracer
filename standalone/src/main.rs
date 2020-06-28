@@ -17,7 +17,7 @@ use std::sync::Mutex;
 
 mod renderers;
 
-const SAMPLES_PER_PIXEL: i64 = 64;
+const SAMPLES_PER_PIXEL: i64 = 6;
 
 fn main_loop() {
     let width = 1920.0 / 2.0;
@@ -28,7 +28,14 @@ fn main_loop() {
         width: width as usize,
     });
 
-    let mut set_pixel = renderer.pixel_accessor();
+    let set_pixel_1 = renderer.pixel_accessor(1.0);
+    let set_pixel_2 = renderer.pixel_accessor(1.0 - 1.0 / (SAMPLES_PER_PIXEL as f32 + 1.0));
+    let set_pixel_3 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 + 1.0) / ((SAMPLES_PER_PIXEL * 2) as f32 + 1.0));
+    let set_pixel_4 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 2.0 + 1.0) / ((SAMPLES_PER_PIXEL * 3) as f32 + 1.0));
+    let set_pixel_5 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 3.0 + 1.0) / ((SAMPLES_PER_PIXEL * 4) as f32 + 1.0));
+    let set_pixel_6 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 4.0 + 1.0) / ((SAMPLES_PER_PIXEL * 5) as f32 + 1.0));
+    let set_pixel_7 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 5.0 + 1.0) / ((SAMPLES_PER_PIXEL * 6) as f32 + 1.0));
+    let set_pixel_8 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 6.0 + 1.0) / ((SAMPLES_PER_PIXEL * 7) as f32 + 1.0));
     eprint!("Scanlines remaining:\n");
     let handle = thread::spawn(move || {
         let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
@@ -36,11 +43,17 @@ fn main_loop() {
         let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
         let scene: Scene = vec![&sphere, &sphere2, &sphere3];
         let raytracer = Raytracer{};
-        raytracer.generate(width, height, scene, SAMPLES_PER_PIXEL, set_pixel, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), 1, set_pixel_1, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_2, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_3, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_4, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_5, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_6, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_7, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene, SAMPLES_PER_PIXEL, set_pixel_8, SmallRng::from_entropy());
+        eprintln!("OK");
     });
     renderer.start_rendering();
-
-    eprint!("\nDone! :-)\n");
 }
 
 fn main() -> std::io::Result<()> {

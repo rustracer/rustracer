@@ -33,11 +33,11 @@ impl Renderer for RendererPixels {
         new
     }
 
-    fn pixel_accessor(&mut self) -> Box<PixelAccessor> {
+    fn pixel_accessor(&mut self, weight: f32) -> Box<PixelAccessor> {
         let world_accessor = Arc::clone(&self.world);
         Box::new(move |position, color| {
             let mut world = world_accessor.write().unwrap();
-            world.set_pixel(position.x, position.y, color)
+            world.set_pixel(position.x, position.y, color, weight)
         })
     }
 
@@ -133,8 +133,18 @@ impl World {
         }
     }
 
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: PixelColor) {
-        self.pixels[y * self.size.width + x] = color;
+    pub fn set_pixel(&mut self, x: usize, y: usize, color: PixelColor, weight: f32) {
+        if (weight == 1.0) {
+            self.pixels[y * self.size.width + x] = color;
+            return;
+        }
+        // NOTE: this is not thread safe
+        let existing_weight = 1.0 - weight;
+        let mut existing_pixel = self.pixels[y * self.size.width + x];
+        existing_pixel.r = (existing_pixel.r as f32 * existing_weight) as u8 + (color.r as f32 * weight) as u8;
+        existing_pixel.g = (existing_pixel.g as f32 * existing_weight) as u8 + (color.g as f32 * weight) as u8;;
+        existing_pixel.b = (existing_pixel.b as f32 * existing_weight) as u8 + (color.b as f32 * weight) as u8;;
+        self.pixels[y * self.size.width + x] = existing_pixel;
     }
 
     /// Update the `World` internal state; bounce the box around the screen.

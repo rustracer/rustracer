@@ -10,7 +10,7 @@ pub struct Dimensions {
 pub trait Renderer {
     fn new(dimensions: Dimensions) -> Self;
 
-    fn pixel_accessor(&mut self) -> Box<PixelAccessor>;
+    fn pixel_accessor(&mut self, weight: f32) -> Box<PixelAccessor>;
 
     // fn render(&self);
 
