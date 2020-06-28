@@ -22,8 +22,8 @@ const SAMPLES_PER_PIXEL: i64 = 64;
  * NOTE: global `static mut` means we will have "unsafe" code
  * but for passing memory between js and wasm should be fine.
  *
- * 2. Why is the size SIZE * SIZE * 4?
- * We want to have 200 pixels by 200 pixels. And 4 colors per pixel (r,g,b,a)
+ * 2. Why is the size HEIGHT * WIDTH * 4?
+ * We want to have HEIGHT pixels by WIDTH pixels. And 4 colors per pixel (r,g,b,a)
  * Which, the Canvas API Supports.
  */
 const OUTPUT_BUFFER_SIZE: usize = HEIGHT * WIDTH * 4;
@@ -60,10 +60,6 @@ fn set_pixel(position: PixelPosition, c: PixelColor) {
     }
 }
 
-fn get_random_f64(inclusive: f64, exclusive: f64) -> f64 {
-    rand::thread_rng().gen_range(inclusive, exclusive)
-}
-
 #[wasm_bindgen]
 pub fn get_height() -> usize {
     return HEIGHT;
@@ -88,6 +84,6 @@ pub fn render() {
         scene,
         SAMPLES_PER_PIXEL,
         set_pixel,
-        get_random_f64,
+        rand::rngs::StdRng::seed_from_u64(0),
     );
 }

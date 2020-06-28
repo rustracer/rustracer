@@ -47,10 +47,12 @@ pub struct Raytracer {
 
 }
 impl Raytracer {
-    pub fn generate<T, R>(&self, width: f64, height: f64, scene: Scene, SAMPLES_PER_PIXEL: i64, set_pixel: T, get_random_f64: R)
+    pub fn generate<T, R>(&self, width: f64, height: f64, scene: Scene, SAMPLES_PER_PIXEL: i64, set_pixel: T, mut random: R)
             where T: Fn(PixelPosition, PixelColor) + Send,
-            R: Fn(f64, f64) -> f64 + 'static + Send {
-        rand_range_f64::init_RNG(get_random_f64);
+            R: rand::Rng + 'static + Send {
+        rand_range_f64::init_RNG(move |start, end| {
+            return random.gen_range(start, end)
+        });
         let camera = Camera::new();
         let random_positions = all_pixels_at_random(height as i64, width as i64);
         let scale = 1.0 / SAMPLES_PER_PIXEL as f64;
