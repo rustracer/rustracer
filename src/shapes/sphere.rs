@@ -4,13 +4,15 @@ use crate::materials::lambertian_diffuse::Lambertian;
 use crate::materials::material::Material;
 
 use super::shape::Shape;
+use crate::materials::metal::Metal;
 use crate::shapes::collision::Collision;
 use crate::shapes::ray::Ray;
+use std::borrow::Borrow;
 
 pub struct Sphere {
     center: Vector3<f64>,
     radius: f64,
-    material: Lambertian,
+    material: Box<dyn Material>,
 }
 
 impl Sphere {
@@ -18,7 +20,15 @@ impl Sphere {
         Sphere {
             center,
             radius,
-            material: Lambertian::new(),
+            material: Box::new(Lambertian::new()),
+        }
+    }
+
+    pub fn new_with_metal(center: Vector3<f64>, radius: f64) -> Sphere {
+        Sphere {
+            center,
+            radius,
+            material: Box::new(Metal::new()),
         }
     }
 }
@@ -63,6 +73,6 @@ impl Shape for Sphere {
     }
 
     fn material(&self) -> &dyn Material {
-        &self.material
+        self.material.borrow()
     }
 }

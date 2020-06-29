@@ -2,9 +2,6 @@ use crate::shapes::ray::Ray;
 use nalgebra::Vector3;
 
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
-const VIEWPORT_HEIGHT: f64 = 2.0;
-const VIEWPORT_WIDTH: f64 = ASPECT_RATIO * VIEWPORT_HEIGHT;
-const FOCAL_LENGTH: f64 = 2.0;
 
 pub struct Camera {
     origin: Vector3<f64>,
@@ -15,18 +12,26 @@ pub struct Camera {
 
 impl Camera {
     pub fn new() -> Camera {
-        let origin = Vector3::new(0.0, 0.0, 1.0);
-        let horizontal = Vector3::new(VIEWPORT_WIDTH, 0.0, 0.0);
-        let vertical = Vector3::new(0.0, VIEWPORT_HEIGHT, 0.0);
+        let origin = Vector3::new(2_f64, 0_f64, 1_f64);
+        let lookat = Vector3::new(0.0, 0.0, -1.0);
+        let vup = Vector3::new(0.0, 1.0, 0.0);
+        let vertical_field_of_view = 20_f64;
+
+        let viewport_height: f64 = 2.0 * vertical_field_of_view.to_radians();
+        let viewport_width: f64 = ASPECT_RATIO * viewport_height;
+
+        let w = (origin - lookat).normalize();
+        let u = vup.cross(&w).normalize();
+        let v = w.cross(&u);
+
+        let horizontal = viewport_width * u;
+        let vertical = viewport_height * v;
 
         Camera {
             origin,
             horizontal,
             vertical,
-            lower_left_corner: origin
-                - horizontal / 2.0
-                - vertical / 2.0
-                - Vector3::new(0.0, 0.0, FOCAL_LENGTH),
+            lower_left_corner: origin - horizontal / 2.0 - vertical / 2.0 - w,
         }
     }
     pub fn emit_ray_at(&self, offset_x: f64, offset_y: f64) -> Ray {
