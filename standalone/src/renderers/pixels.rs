@@ -11,7 +11,8 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-use crate::renderers::renderer::{Dimensions, PixelAccessor, PixelColor, Renderer};
+use crate::renderers::renderer::{Dimensions, Renderer};
+use raytracer_core::{PixelAccessor, PixelColor};
 use std::time::Instant;
 
 struct Size {

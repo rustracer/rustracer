@@ -1,0 +1,18 @@
+[package]
+name = "standalone"
+version = "0.1.0"
+authors = ["Thierry Berger <contact@thierryberger.com>"]
+edition = "2018"
+
+[dependencies]
+raytracer_core = { path = "../raytracer_core"}
+pixels = "0.0.4"
+winit = "*"
+winit_input_helper = "*"
+env_logger = "0.7.1"
+log = { version = "0.4.8", features = [ "release_max_level_warn" ] }
+lazy_static = "1.4.0"
+
+[dependencies.rand]
+version = "0.7"
+features = ["small_rng", ]
