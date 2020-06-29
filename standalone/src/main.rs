@@ -8,12 +8,10 @@ use raytracer_core::Vector3;
 use crate::renderers::pixels::RendererPixels;
 use crate::renderers::renderer::{Dimensions, Renderer};
 use raytracer_core::shapes::sphere::Sphere;
-use raytracer_core::{Scene, Raytracer};
+use raytracer_core::{Raytracer, Scene};
 
-use lazy_static::lazy_static;
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
-use std::sync::Mutex;
+use rand::SeedableRng;
 
 mod renderers;
 
@@ -28,15 +26,22 @@ fn main_loop() {
         width: width as usize,
     });
 
-    let mut set_pixel = renderer.pixel_accessor();
+    let set_pixel = renderer.pixel_accessor();
     eprint!("Scanlines remaining:\n");
-    let handle = thread::spawn(move || {
-        let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
+    thread::spawn(move || {
+        let sphere = Sphere::new_with_metal(Vector3::new(0.0, 0.0, -1.0), 0.5);
         let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
         let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
         let scene: Scene = vec![&sphere, &sphere2, &sphere3];
-        let raytracer = Raytracer{};
-        raytracer.generate(width, height, scene, SAMPLES_PER_PIXEL, set_pixel, SmallRng::from_entropy());
+        let raytracer = Raytracer {};
+        raytracer.generate(
+            width,
+            height,
+            scene,
+            SAMPLES_PER_PIXEL,
+            set_pixel,
+            &mut SmallRng::from_entropy(),
+        );
     });
     renderer.start_rendering();
 

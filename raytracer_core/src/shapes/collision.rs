@@ -7,7 +7,6 @@ pub struct Collision<'a> {
     dist_from_origin: f64,
     position: Vector3<f64>,
     shape: &'a dyn Shape,
-    normal: Option<Vector3<f64>>,
 }
 
 impl Collision<'_> {
@@ -16,7 +15,6 @@ impl Collision<'_> {
             position,
             shape,
             dist_from_origin,
-            normal: None,
         }
     }
 

@@ -58,7 +58,7 @@ impl Renderer for RendererPixels {
                 .build(&event_loop)
                 .unwrap()
         };
-        let mut hidpi_factor = window.scale_factor();
+        let mut _hidpi_factor = window.scale_factor();
         let mut pixels = {
             let surface = Surface::create(&window);
             let surface_texture =
@@ -97,7 +97,7 @@ impl Renderer for RendererPixels {
 
                 // Adjust high DPI factor
                 if let Some(factor) = input.scale_factor_changed() {
-                    hidpi_factor = factor;
+                    _hidpi_factor = factor;
                 }
 
                 // Resize the window
@@ -136,9 +136,6 @@ impl World {
     pub fn set_pixel(&mut self, x: usize, y: usize, color: PixelColor) {
         self.pixels[y * self.size.width + x] = color;
     }
-
-    /// Update the `World` internal state; bounce the box around the screen.
-    fn update(&mut self) {}
 
     /// Draw the `World` state to the frame buffer.
     ///
