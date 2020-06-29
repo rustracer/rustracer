@@ -8,12 +8,10 @@ use raytracer_core::Vector3;
 use crate::renderers::pixels::RendererPixels;
 use crate::renderers::renderer::{Dimensions, Renderer};
 use raytracer_core::shapes::sphere::Sphere;
-use raytracer_core::{Scene, Raytracer};
+use raytracer_core::{Raytracer, Scene};
 
-use lazy_static::lazy_static;
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
-use std::sync::Mutex;
+use rand::SeedableRng;
 
 mod renderers;
 
@@ -37,20 +35,20 @@ fn main_loop() {
     let set_pixel_7 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 5.0 + 1.0) / ((SAMPLES_PER_PIXEL * 6) as f32 + 1.0));
     let set_pixel_8 = renderer.pixel_accessor(1.0 - (SAMPLES_PER_PIXEL as f32 * 6.0 + 1.0) / ((SAMPLES_PER_PIXEL * 7) as f32 + 1.0));
     eprint!("Scanlines remaining:\n");
-    let handle = thread::spawn(move || {
-        let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
+    thread::spawn(move || {
+        let sphere = Sphere::new_with_metal(Vector3::new(0.0, 0.0, -1.0), 0.5);
         let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
         let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
         let scene: Scene = vec![&sphere, &sphere2, &sphere3];
         let raytracer = Raytracer{};
-        raytracer.generate(width, height, scene.clone(), 1, set_pixel_1, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_2, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_3, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_4, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_5, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_6, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_7, SmallRng::from_entropy());
-        raytracer.generate(width, height, scene, SAMPLES_PER_PIXEL, set_pixel_8, SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), 1, set_pixel_1, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_2, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_3, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_4, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_5, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_6, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene.clone(), SAMPLES_PER_PIXEL, set_pixel_7, &mut SmallRng::from_entropy());
+        raytracer.generate(width, height, scene, SAMPLES_PER_PIXEL, set_pixel_8, &mut SmallRng::from_entropy());
         eprintln!("OK");
     });
     renderer.start_rendering();

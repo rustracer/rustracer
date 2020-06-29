@@ -24,7 +24,7 @@ const SAMPLES_PER_PIXEL: i64 = 64;
  *
  * 2. Why is the size HEIGHT * WIDTH * 4?
  * We want to have HEIGHT pixels by WIDTH pixels. And 4 colors per pixel (r,g,b,a)
- * Which, the Canvas API Supports.
+ * Which the Canvas API Supports.
  */
 const OUTPUT_BUFFER_SIZE: usize = HEIGHT * WIDTH * 4;
 static mut OUTPUT_BUFFER: [u8; OUTPUT_BUFFER_SIZE] = [0; OUTPUT_BUFFER_SIZE];
@@ -43,7 +43,7 @@ pub fn get_output_buffer_pointer() -> *const u8 {
         pointer = OUTPUT_BUFFER.as_ptr();
     }
 
-    return pointer;
+    pointer
 }
 
 fn set_pixel(position: PixelPosition, c: PixelColor) {
@@ -62,28 +62,29 @@ fn set_pixel(position: PixelPosition, c: PixelColor) {
 
 #[wasm_bindgen]
 pub fn get_height() -> usize {
-    return HEIGHT;
+    HEIGHT
 }
 
 #[wasm_bindgen]
 pub fn get_width() -> usize {
-    return WIDTH;
+    WIDTH
 }
 
 // Function to generate our checkerboard, pixel by pixel
 #[wasm_bindgen]
 pub fn render() {
-    let sphere = Sphere::new(Vector3::new(0.0, 0.0, -1.0), 0.5);
+    let sphere = Sphere::new_with_metal(Vector3::new(0.0, 0.0, -1.0), 0.5);
     let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
     let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
     let scene: Scene = vec![&sphere, &sphere2, &sphere3];
     let raytracer = Raytracer {};
+    let mut rng = rand::rngs::StdRng::seed_from_u64(0);
     raytracer.generate(
         WIDTH as f64,
         HEIGHT as f64,
         scene,
         SAMPLES_PER_PIXEL,
         set_pixel,
-        rand::rngs::StdRng::seed_from_u64(0),
+        &mut rng,
     );
 }
