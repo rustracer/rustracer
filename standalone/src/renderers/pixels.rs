@@ -12,7 +12,7 @@ use winit::{
 use winit_input_helper::WinitInputHelper;
 
 use crate::renderers::renderer::{Dimensions, Renderer};
-use raytracer_core::{PixelAccessor, PixelColor};
+use raytracer_core::{PixelColor, PixelRenderer};
 use std::time::Instant;
 
 struct Size {
@@ -26,22 +26,18 @@ pub struct RendererPixels {
 
 impl Renderer for RendererPixels {
     fn new(dimensions: Dimensions) -> Self {
-        let new = Self {
+        Self {
             world: Arc::new(RwLock::new(World::new(dimensions.height, dimensions.width))),
-        };
-        //        new.start_rendering();
-        new
+        }
     }
 
-    fn pixel_accessor(&mut self, weight: f32) -> Box<PixelAccessor> {
+    fn pixel_accessor(&mut self) -> Box<dyn PixelRenderer> {
         let world_accessor = Arc::clone(&self.world);
         Box::new(move |position, color| {
             let mut world = world_accessor.write().unwrap();
-            world.set_pixel(position.x, position.y, color, weight)
+            world.set_pixel(position.x, position.y, color)
         })
     }
-
-    // fn render(&self) {}
 
     fn start_rendering(&mut self) {
         let world_accessor = Arc::clone(&self.world);
@@ -116,49 +112,59 @@ impl Renderer for RendererPixels {
     }
 }
 
+struct Pixel {
+    color: PixelColor,
+    write_count: u64,
+}
+
 struct World {
-    pixels: Vec<PixelColor>,
+    pixels: Vec<Pixel>,
     size: Size,
 }
 
 impl World {
     fn new(height: usize, width: usize) -> Self {
         let count = width * height;
-        let mut v = Vec::with_capacity(count);
+        let mut pixels = Vec::with_capacity(count);
         let black = PixelColor { r: 0, g: 0, b: 0 };
-        v.resize_with(count, || black);
+        pixels.resize_with(count, || Pixel {
+            color: black,
+            write_count: 0,
+        });
         Self {
-            pixels: v,
+            pixels,
             size: Size { width, height },
         }
     }
 
-    pub fn set_pixel(&mut self, x: usize, y: usize, color: PixelColor, weight: f32) {
-        if (weight == 1.0) {
-            self.pixels[y * self.size.width + x] = color;
+    pub fn set_pixel(&mut self, x: usize, y: usize, new_pixel: PixelColor) {
+        // NOTE: this is not thread safe
+        let mut pixel = &mut self.pixels[y * self.size.width + x];
+        if pixel.write_count == 0 {
+            pixel.color = new_pixel;
+            pixel.write_count += 1;
             return;
         }
-        // NOTE: this is not thread safe
-        let existing_weight = 1.0 - weight;
-        let mut existing_pixel = self.pixels[y * self.size.width + x];
-        existing_pixel.r = (existing_pixel.r as f32 * existing_weight) as u8 + (color.r as f32 * weight) as u8;
-        existing_pixel.g = (existing_pixel.g as f32 * existing_weight) as u8 + (color.g as f32 * weight) as u8;;
-        existing_pixel.b = (existing_pixel.b as f32 * existing_weight) as u8 + (color.b as f32 * weight) as u8;;
-        self.pixels[y * self.size.width + x] = existing_pixel;
+        let new_weight = 1.0 - pixel.write_count as f32 / (pixel.write_count + 1) as f32;
+        let old_weight = 1.0 - new_weight;
+
+        pixel.color.r = (pixel.color.r as f32 * old_weight + new_pixel.r as f32 * new_weight) as u8;
+        pixel.color.g = (pixel.color.g as f32 * old_weight + new_pixel.g as f32 * new_weight) as u8;
+        pixel.color.b = (pixel.color.b as f32 * old_weight + new_pixel.b as f32 * new_weight) as u8;
+        pixel.write_count += 1;
     }
 
     /// Draw the `World` state to the frame buffer.
-    ///
     /// Assumes the default texture format: [`wgpu::TextureFormat::Rgba8UnormSrgb`]
     fn draw(&self, frame: &mut [u8]) {
-        for (i, pixel) in frame.chunks_exact_mut(4).enumerate().rev() {
+        for (i, raw_pixel) in frame.chunks_exact_mut(4).enumerate().rev() {
             let x = (i % self.size.width as usize) as usize;
             let y = self.size.height - 1 - (i / self.size.width as usize) as usize;
 
-            let color = self.pixels[y * self.size.width + x];
-            let rgba = [color.r, color.g, color.b, 0xff];
+            let pixel = &self.pixels[y * self.size.width + x];
+            let rgba = [pixel.color.r, pixel.color.g, pixel.color.b, 0xff];
 
-            pixel.copy_from_slice(&rgba);
+            raw_pixel.copy_from_slice(&rgba);
         }
     }
 }

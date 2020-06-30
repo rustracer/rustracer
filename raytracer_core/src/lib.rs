@@ -1,6 +1,7 @@
 #![feature(tau_constant)]
 #![feature(clamp)]
 #![feature(associated_type_bounds)]
+#![feature(trait_alias)]
 
 pub use nalgebra::Vector3;
 use rand::seq::SliceRandom;
@@ -34,9 +35,8 @@ pub struct PixelPosition {
     pub y: usize,
 }
 
-pub type PixelAccessor = dyn Fn(PixelPosition, PixelColor) + Send;
-
 pub type Scene<'a> = Vec<&'a dyn Shape>;
+pub trait PixelRenderer = Fn(PixelPosition, PixelColor) + Send;
 
 pub struct Raytracer {}
 
@@ -45,12 +45,12 @@ impl Raytracer {
         &self,
         width: f64,
         height: f64,
-        scene: Scene,
+        scene: &[&dyn Shape],
         samples_per_pixel: i64,
-        set_pixel: T,
+        set_pixel: &T,
         random: &mut R,
     ) where
-        T: Fn(PixelPosition, PixelColor) + Send,
+        T: PixelRenderer,
         R: rand::Rng + 'static + Send,
     {
         let camera = Camera::new();
