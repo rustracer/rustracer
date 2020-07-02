@@ -15,7 +15,7 @@ use rand::SeedableRng;
 
 mod renderers;
 
-const SAMPLES_PER_PIXEL: i64 = 64;
+const SAMPLES_PER_PIXEL: i64 = 50;
 
 fn main_loop() {
     let width = 1920.0 / 2.0;
@@ -25,7 +25,6 @@ fn main_loop() {
         height: height as usize,
         width: width as usize,
     });
-
     let set_pixel = renderer.pixel_accessor();
     eprint!("Scanlines remaining:\n");
     thread::spawn(move || {
@@ -33,19 +32,16 @@ fn main_loop() {
         let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
         let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
         let scene: Scene = vec![&sphere, &sphere2, &sphere3];
-        let raytracer = Raytracer {};
-        raytracer.generate(
-            width,
-            height,
-            scene,
-            SAMPLES_PER_PIXEL,
-            set_pixel,
-            &mut SmallRng::from_entropy(),
-        );
+        let rng = &mut SmallRng::from_entropy();
+
+        let raytracer = Raytracer::new(width, height, rng);
+
+        for _depth in 0..=SAMPLES_PER_PIXEL {
+            raytracer.generate(scene.as_slice(), 1, &set_pixel, rng);
+        }
+        eprintln!("OK");
     });
     renderer.start_rendering();
-
-    eprint!("\nDone! :-)\n");
 }
 
 fn main() -> std::io::Result<()> {

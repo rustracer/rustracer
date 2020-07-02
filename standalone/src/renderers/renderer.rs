@@ -1,4 +1,4 @@
-use raytracer_core::PixelAccessor;
+use raytracer_core::PixelRenderer;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Dimensions {
@@ -6,11 +6,10 @@ pub struct Dimensions {
     pub(crate) height: usize,
 }
 
-
 pub trait Renderer {
     fn new(dimensions: Dimensions) -> Self;
 
-    fn pixel_accessor(&mut self) -> Box<PixelAccessor>;
+    fn pixel_accessor(&mut self) -> Box<dyn PixelRenderer>;
 
     // fn render(&self);
 

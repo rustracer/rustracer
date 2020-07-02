@@ -53,7 +53,7 @@ fn set_pixel(position: PixelPosition, c: PixelColor) {
     let square_rgba_index: usize = square_number * 4;
 
     unsafe {
-        OUTPUT_BUFFER[square_rgba_index + 0] = c.r; // Red
+        OUTPUT_BUFFER[square_rgba_index] = c.r; // Red
         OUTPUT_BUFFER[square_rgba_index + 1] = c.g; // Green
         OUTPUT_BUFFER[square_rgba_index + 2] = c.b; // Blue
         OUTPUT_BUFFER[square_rgba_index + 3] = 255; // Alpha (Always Opaque)
@@ -77,14 +77,7 @@ pub fn render() {
     let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
     let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
     let scene: Scene = vec![&sphere, &sphere2, &sphere3];
-    let raytracer = Raytracer {};
     let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-    raytracer.generate(
-        WIDTH as f64,
-        HEIGHT as f64,
-        scene,
-        SAMPLES_PER_PIXEL,
-        set_pixel,
-        &mut rng,
-    );
+    let raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, &mut rng);
+    raytracer.generate(scene.as_slice(), SAMPLES_PER_PIXEL, &set_pixel, &mut rng);
 }
