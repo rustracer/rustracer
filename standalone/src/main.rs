@@ -6,32 +6,57 @@ use std::thread;
 use raytracer_core::Vector3;
 
 use crate::renderers::pixels::RendererPixels;
-use crate::renderers::renderer::{Dimensions, Renderer};
+use raytracer_core::rendering::renderer::{Dimensions, Renderer};
 use raytracer_core::shapes::sphere::Sphere;
 use raytracer_core::{Raytracer, Scene};
 
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
+use raytracer_core::camera::Camera;
+use raytracer_core::materials::dielectric::Dielectric;
+use raytracer_core::materials::lambertian_diffuse::Lambertian;
+use raytracer_core::materials::metal::Metal;
 
 mod renderers;
 
-const SAMPLES_PER_PIXEL: i64 = 50;
+const SAMPLES_PER_PIXEL: i64 = 300;
 
 fn main_loop() {
     let width = 1920.0 / 2.0;
     let height = 1080.0 / 2.0;
 
-    let mut renderer = RendererPixels::new(Dimensions {
-        height: height as usize,
-        width: width as usize,
-    });
+    let mut renderer = RendererPixels::new(
+        Dimensions {
+            height: height as usize,
+            width: width as usize,
+        },
+        Camera::new(),
+    );
     let set_pixel = renderer.pixel_accessor();
     eprint!("Scanlines remaining:\n");
     thread::spawn(move || {
-        let sphere = Sphere::new_with_metal(Vector3::new(0.0, 0.0, -1.0), 0.5);
-        let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
-        let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
-        let scene: Scene = vec![&sphere, &sphere2, &sphere3];
+        let sphere = Sphere::new(
+            Vector3::new(-1.01, 0.0, -1.0),
+            0.5,
+            Box::new(Dielectric::new(Vector3::new(1.0, 0.90, 0.90), 1.02)),
+        );
+        let sphere2 = Sphere::new(
+            Vector3::new(0.0, -100.5, -1.0),
+            100.0,
+            Box::new(Lambertian::new_from_hex(0x007070)),
+        );
+        let sphere3 = Sphere::new(
+            Vector3::new(1.0, 0.0, -1.0),
+            0.5,
+            Box::new(Metal::new(Vector3::new(0.8, 0.8, 0.8), 0.1)),
+        );
+        let sphere4 = Sphere::new(
+            Vector3::new(-0.0, 0.0, -1.0),
+            0.5,
+            Box::new(Metal::new(Vector3::new(0.8, 0.6, 0.2), 0.5)),
+        );
+
+        let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
         let rng = &mut SmallRng::from_entropy();
 
         let raytracer = Raytracer::new(width, height, rng);

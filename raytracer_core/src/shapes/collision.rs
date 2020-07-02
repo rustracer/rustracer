@@ -34,7 +34,7 @@ impl Collision<'_> {
         self.shape.material().scatter(ray, self)
     }
 
-    pub fn bounce(&self, ray: &Ray) -> Ray {
+    pub fn bounce(&self, ray: &Ray) -> Option<Ray> {
         self.shape.material().bounce(ray, self)
     }
 }
