@@ -10,15 +10,26 @@ use crate::shapes::collision::Collision;
 use crate::shapes::ray::{Color, Ray};
 
 pub struct Lambertian {
-    albedo: f64,
+    albedo: Vector3<f64>,
     // in fact this is not really a Color, more a RGB % of reflection
     rng: RefCell<SmallRng>,
 }
 
 impl Lambertian {
-    pub fn new() -> Lambertian {
+    pub fn new(albedo: Vector3<f64>) -> Lambertian {
         Lambertian {
-            albedo: 0.18 / PI,
+            albedo: albedo / PI,
+            rng: RefCell::new(SmallRng::from_entropy()),
+        }
+    }
+
+    pub fn new_from_hex(color: i64) -> Lambertian {
+        Lambertian {
+            albedo: Vector3::new(
+                (((color & 0xFF0000) >> 16) as f64) / 255.0,
+                (((color & 0x00FF00) >> 8) as f64) / 255.0,
+                ((color & 0x0000FF) as f64) / 255.0,
+            ) / PI,
             rng: RefCell::new(SmallRng::from_entropy()),
         }
     }
@@ -44,15 +55,20 @@ impl Material for Lambertian {
         let light_vector = collision.normal(); // global lightning, could consider normal to be // with light
         let light_intensity = 3.0; // global lightning, to be changed
         let light_color = Color::new(1.0, 1.0, 1.0); // global lightning, to be changed
-
         let dot_product = f64::max(0.0, collision.normal().dot(&light_vector));
-        light_color * dot_product * self.albedo * light_intensity
+
+        Vector3::new(
+            self.albedo.x * light_color.x,
+            self.albedo.y * light_color.y,
+            self.albedo.z * light_color.z,
+        ) * light_intensity
+            * dot_product
     }
 
-    fn bounce(&self, _ray: &Ray, collision: &Collision) -> Ray {
-        Ray::new(
+    fn bounce(&self, _ray: &Ray, collision: &Collision) -> Option<Ray> {
+        Some(Ray::new(
             *collision.position(),
             collision.normal() + self.random_unit_vector(),
-        )
+        ))
     }
 }

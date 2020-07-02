@@ -62,7 +62,10 @@ impl Ray {
 
         match may_collision {
             Some(collision) => {
-                let color_until_now = collision.bounce(self)._project_ray(scene, depth - 1);
+                let color_until_now = match collision.bounce(self) {
+                    Some(ray) => ray._project_ray(scene, depth - 1),
+                    None => Vector3::new(0.0, 0.0, 0.0),
+                };
                 let new_color = collision.color(self);
                 let ret = Color::new(
                     new_color.x * color_until_now.x,
