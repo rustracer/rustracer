@@ -11,8 +11,10 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-use crate::renderers::renderer::{Dimensions, Renderer};
-use raytracer_core::{PixelColor, PixelRenderer};
+use raytracer_core::camera::Camera;
+use raytracer_core::rendering::renderer::{Dimensions, Renderer, SceneContext};
+use raytracer_core::{PixelColor, PixelPosition, Vector3};
+use std::cell::RefCell;
 use std::time::Instant;
 
 struct Size {
@@ -20,27 +22,70 @@ struct Size {
     height: usize,
 }
 
-pub struct RendererPixels {
-    world: Arc<RwLock<World>>,
+pub struct MovableCamera {
+    origin: Vector3<f64>,
+    lower_left_corner: Vector3<f64>,
+    horizontal: Vector3<f64>,
+    vertical: Vector3<f64>,
 }
 
-impl Renderer for RendererPixels {
-    fn new(dimensions: Dimensions) -> Self {
-        Self {
-            world: Arc::new(RwLock::new(World::new(dimensions.height, dimensions.width))),
+impl MovableCamera {
+    fn from(camera: Camera) -> Self {
+        MovableCamera {
+            origin: camera.origin,
+            lower_left_corner: camera.lower_left_corner,
+            horizontal: camera.horizontal,
+            vertical: camera.vertical,
         }
     }
 
-    fn pixel_accessor(&mut self) -> Box<dyn PixelRenderer> {
+    fn to_immutable(&self) -> Camera {
+        Camera {
+            origin: self.origin.clone_owned(),
+            lower_left_corner: self.lower_left_corner.clone_owned(),
+            horizontal: self.horizontal.clone_owned(),
+            vertical: self.vertical.clone_owned(),
+        }
+    }
+
+    fn move_up(&mut self) {
+        self.origin.y += 0.1;
+    }
+}
+
+pub struct RendererPixels {
+    world: Arc<RwLock<World>>,
+    camera: Arc<RwLock<MovableCamera>>,
+}
+
+impl Renderer for RendererPixels {
+    fn new(dimensions: Dimensions, camera: Camera) -> Self {
+        Self {
+            world: Arc::new(RwLock::new(World::new(dimensions.height, dimensions.width))),
+            camera: Arc::new(RwLock::new(MovableCamera::from(camera))),
+        }
+    }
+
+    fn pixel_accessor(&mut self) -> SceneContext {
         let world_accessor = Arc::clone(&self.world);
-        Box::new(move |position, color| {
+        let camera_accessor = Arc::clone(&self.camera);
+        let renderer = Box::new(move |position: PixelPosition, color| {
             let mut world = world_accessor.write().unwrap();
             world.set_pixel(position.x, position.y, color)
-        })
+        });
+        let camera_accessor2 = Box::new(move || {
+            let camera = camera_accessor.read().unwrap();
+            camera.to_immutable()
+        });
+        SceneContext {
+            pixel_renderer: renderer,
+            camera_accessor: camera_accessor2,
+        }
     }
 
     fn start_rendering(&mut self) {
         let world_accessor = Arc::clone(&self.world);
+        let camera_accessor = Arc::clone(&self.camera);
         let world = world_accessor.read().unwrap();
         let mut input = WinitInputHelper::new();
         let event_loop = EventLoop::new();
@@ -88,6 +133,13 @@ impl Renderer for RendererPixels {
                 // Close events
                 if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
                     *control_flow = ControlFlow::Exit;
+                    return;
+                }
+
+                if input.key_pressed(VirtualKeyCode::Up) {
+                    eprintln!("up!");
+                    camera_accessor.write().unwrap().move_up();
+                    world_accessor.write().unwrap().invalidate_pixels();
                     return;
                 }
 
@@ -165,6 +217,12 @@ impl World {
             let rgba = [pixel.color.r, pixel.color.g, pixel.color.b, 0xff];
 
             raw_pixel.copy_from_slice(&rgba);
+        }
+    }
+
+    fn invalidate_pixels(&mut self) {
+        for idx in 0..self.pixels.len() {
+            self.pixels[idx].write_count = 0;
         }
     }
 }

@@ -3,19 +3,20 @@ use nalgebra::Vector3;
 
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 
+#[derive()]
 pub struct Camera {
-    origin: Vector3<f64>,
-    lower_left_corner: Vector3<f64>,
-    horizontal: Vector3<f64>,
-    vertical: Vector3<f64>,
+    pub origin: Vector3<f64>,
+    pub lower_left_corner: Vector3<f64>,
+    pub horizontal: Vector3<f64>,
+    pub vertical: Vector3<f64>,
 }
 
 impl Camera {
     pub fn new() -> Camera {
-        let origin = Vector3::new(2_f64, 0_f64, 1_f64);
+        let origin = Vector3::new(-3.0, 1.0, 2.0);
         let lookat = Vector3::new(0.0, 0.0, -1.0);
         let vup = Vector3::new(0.0, 1.0, 0.0);
-        let vertical_field_of_view = 20_f64;
+        let vertical_field_of_view = 15_f64;
 
         let viewport_height: f64 = 2.0 * vertical_field_of_view.to_radians();
         let viewport_width: f64 = ASPECT_RATIO * viewport_height;
@@ -34,12 +35,13 @@ impl Camera {
             lower_left_corner: origin - horizontal / 2.0 - vertical / 2.0 - w,
         }
     }
+
     pub fn emit_ray_at(&self, offset_x: f64, offset_y: f64) -> Ray {
         Ray::new(
             self.origin.clone_owned(),
-            &self.lower_left_corner - &self.origin
-                + &self.horizontal * offset_x
-                + &self.vertical * offset_y,
+            self.lower_left_corner - self.origin
+                + self.horizontal * offset_x
+                + self.vertical * offset_y,
         )
     }
 }

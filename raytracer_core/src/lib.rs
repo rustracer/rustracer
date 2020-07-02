@@ -3,15 +3,18 @@
 #![feature(associated_type_bounds)]
 #![feature(trait_alias)]
 
+use std::cell::Cell;
+
 pub use nalgebra::Vector3;
 use rand::seq::SliceRandom;
 
 use crate::camera::Camera;
+use crate::rendering::renderer::{PixelRenderer, SceneContext};
 use crate::shapes::shape::Shape;
-use std::cell::Cell;
 
-mod camera;
-mod materials;
+pub mod camera;
+pub mod materials;
+pub mod rendering;
 pub mod shapes;
 
 #[derive(Debug, Clone, Copy)]
@@ -51,15 +54,13 @@ pub struct PixelCache {
 
 pub type Scene<'a> = Vec<&'a dyn Shape>;
 
-pub trait PixelRenderer = Fn(PixelPosition, PixelColor) + Send;
-
 pub struct Raytracer {
     pixel_cache: Vec<PixelCache>,
     width: f64,
     height: f64,
 }
 
-const MAX_SIMILAR_SAMPLE_FOR_A_PIXEL: u8 = 3;
+const MAX_SIMILAR_SAMPLE_FOR_A_PIXEL: u8 = 2;
 
 impl Raytracer {
     pub fn new<R>(width: f64, height: f64, random: &mut R) -> Self
@@ -75,17 +76,15 @@ impl Raytracer {
         }
     }
 
-    pub fn generate<T, R>(
+    pub fn generate<R>(
         &self,
         scene: &[&dyn Shape],
         samples_per_pixel: i64,
-        set_pixel: &T,
+        scene_context: &SceneContext,
         random: &mut R,
     ) where
-        T: PixelRenderer,
         R: rand::Rng + 'static + Send,
     {
-        let camera = Camera::new();
         let scale = 1.0 / samples_per_pixel as f64;
         for pixel in self.pixel_cache.as_slice() {
             if pixel.same_color_count.get() > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
@@ -97,7 +96,7 @@ impl Raytracer {
                     (pixel.pos.x as f64 + random.gen_range(0.0, 1.0)) / (self.width - 1.0);
                 let offset_y =
                     (pixel.pos.y as f64 + random.gen_range(0.0, 1.0)) / (self.height - 1.0);
-                let r = camera.emit_ray_at(offset_x, offset_y);
+                let r = (*scene_context.camera_accessor)().emit_ray_at(offset_x, offset_y);
                 samples_color += r.project_ray(&scene);
             }
             let corrected_pixel_color = (samples_color * scale)
@@ -105,7 +104,7 @@ impl Raytracer {
                 .map(f64::sqrt)
                 .map(|c| c * 255.0);
             let color = PixelColor::from(corrected_pixel_color);
-            set_pixel(pixel.pos, color);
+            (*scene_context.pixel_renderer)(pixel.pos, color);
 
             if pixel.last_color.get() == color {
                 pixel.same_color_count.set(pixel.same_color_count.get() + 1);
