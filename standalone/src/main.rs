@@ -34,10 +34,11 @@ fn main_loop() {
         let scene: Scene = vec![&sphere, &sphere2, &sphere3];
         let rng = &mut SmallRng::from_entropy();
 
-        let raytracer = Raytracer::new(width, height, rng);
-
-        for _depth in 0..=SAMPLES_PER_PIXEL {
-            raytracer.generate(scene.as_slice(), 1, &set_pixel, rng);
+        let mut raytracer = Raytracer::new(width, height, rng);
+        let mut spp = 1;
+        loop {
+            raytracer.generate(scene.as_slice(), spp, &set_pixel, rng);
+            //spp =  spp + 1;
         }
         eprintln!("OK");
     });

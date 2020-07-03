@@ -69,7 +69,7 @@ impl Renderer for RendererPixels {
         drop(world);
         let mut last_time = Instant::now();
         event_loop.run(move |event, _, control_flow| {
-            let world = world_accessor.write().unwrap();
+            let mut world = world_accessor.write().unwrap();
             // Draw the current frame
             if let Event::RedrawRequested(_) = event {
                 world.draw(pixels.get_frame());
@@ -89,6 +89,13 @@ impl Renderer for RendererPixels {
                 if input.key_pressed(VirtualKeyCode::Escape) || input.quit() {
                     *control_flow = ControlFlow::Exit;
                     return;
+                }
+                if (input.key_pressed(VirtualKeyCode::M)) {
+                    world.render_mode = match world.render_mode {
+                        RenderMode::Normal => RenderMode::PerfTime,
+                        RenderMode::PerfTime => RenderMode::Normal,
+
+                    }
                 }
 
                 // Adjust high DPI factor
@@ -117,9 +124,16 @@ struct Pixel {
     write_count: u64,
 }
 
+enum RenderMode {
+    Normal,
+    PerfTime
+}
+
 struct World {
     pixels: Vec<Pixel>,
     size: Size,
+    max_write_count: u64,
+    render_mode: RenderMode,
 }
 
 impl World {
@@ -134,6 +148,8 @@ impl World {
         Self {
             pixels,
             size: Size { width, height },
+            max_write_count: 1,
+            render_mode: RenderMode::Normal,
         }
     }
 
@@ -151,7 +167,11 @@ impl World {
         pixel.color.r = (pixel.color.r as f32 * old_weight + new_pixel.r as f32 * new_weight) as u8;
         pixel.color.g = (pixel.color.g as f32 * old_weight + new_pixel.g as f32 * new_weight) as u8;
         pixel.color.b = (pixel.color.b as f32 * old_weight + new_pixel.b as f32 * new_weight) as u8;
+
         pixel.write_count += 1;
+        if pixel.write_count > self.max_write_count {
+            self.max_write_count = pixel.write_count;
+        }
     }
 
     /// Draw the `World` state to the frame buffer.
@@ -162,8 +182,12 @@ impl World {
             let y = self.size.height - 1 - (i / self.size.width as usize) as usize;
 
             let pixel = &self.pixels[y * self.size.width + x];
-            let rgba = [pixel.color.r, pixel.color.g, pixel.color.b, 0xff];
-
+            // Normal color mode:
+            let rgba = match self.render_mode {
+                RenderMode::Normal => [pixel.color.r, pixel.color.g, pixel.color.b, 0xff],
+                RenderMode::PerfTime => [((pixel.write_count as f64 / self.max_write_count as f64) * 255.0) as u8, 0, 0, 0xff],
+            };
+            
             raw_pixel.copy_from_slice(&rgba);
         }
     }

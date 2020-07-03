@@ -45,8 +45,8 @@ pub struct PixelPosition {
 
 pub struct PixelCache {
     pub pos: PixelPosition,
-    pub last_color: Cell<PixelColor>,
-    pub same_color_count: Cell<u8>,
+    pub last_color: Option<PixelColor>,
+    pub same_color_count: u8,
 }
 
 pub type Scene<'a> = Vec<&'a dyn Shape>;
@@ -66,7 +66,7 @@ impl Raytracer {
     where
         R: rand::Rng + 'static + Send,
     {
-        let random_positions = all_pixels_at_random(height as i64, width as i64, random);
+        let random_positions =  all_pixels_at_random(height as i64, width as i64, random);
 
         Raytracer {
             pixel_cache: random_positions,
@@ -76,7 +76,7 @@ impl Raytracer {
     }
 
     pub fn generate<T, R>(
-        &self,
+        &mut self,
         scene: &[&dyn Shape],
         samples_per_pixel: i64,
         set_pixel: &T,
@@ -87,8 +87,8 @@ impl Raytracer {
     {
         let camera = Camera::new();
         let scale = 1.0 / samples_per_pixel as f64;
-        for pixel in self.pixel_cache.as_slice() {
-            if pixel.same_color_count.get() > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
+        for pixel in self.pixel_cache.as_mut_slice() {
+            if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
                 continue;
             }
             let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
@@ -107,10 +107,15 @@ impl Raytracer {
             let color = PixelColor::from(corrected_pixel_color);
             set_pixel(pixel.pos, color);
 
-            if pixel.last_color.get() == color {
-                pixel.same_color_count.set(pixel.same_color_count.get() + 1);
+            if let Some(last_color) = pixel.last_color {
+                if last_color == color {
+                    pixel.same_color_count = pixel.same_color_count + 1;
+                }
+                else {
+                    //pixel.same_color_count = 0;
+                }
             }
-            pixel.last_color.set(color);
+            pixel.last_color = Some(color);
         }
     }
 }
@@ -138,9 +143,9 @@ where
         })
         .map(|pix| -> PixelCache {
             PixelCache {
-                last_color: Cell::new(PixelColor { r: 0, g: 0, b: 0 }),
+                last_color: None,
                 pos: pix,
-                same_color_count: Cell::new(0),
+                same_color_count: 0,
             }
         })
         .collect();
