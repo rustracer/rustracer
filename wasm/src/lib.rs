@@ -72,12 +72,4 @@ pub fn get_width() -> usize {
 
 // Function to generate our checkerboard, pixel by pixel
 #[wasm_bindgen]
-pub fn render() {
-    let sphere = Sphere::new_with_metal(Vector3::new(0.0, 0.0, -1.0), 0.5);
-    let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
-    let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
-    let scene: Scene = vec![&sphere, &sphere2, &sphere3];
-    let mut rng = rand::rngs::StdRng::seed_from_u64(0);
-    let raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, &mut rng);
-    raytracer.generate(scene.as_slice(), SAMPLES_PER_PIXEL, &set_pixel, &mut rng);
-}
+pub fn render() {}

@@ -11,7 +11,7 @@ use crate::shapes::shape::Shape;
 use std::cell::Cell;
 
 mod camera;
-mod materials;
+pub mod materials;
 pub mod shapes;
 
 #[derive(Debug, Clone, Copy)]

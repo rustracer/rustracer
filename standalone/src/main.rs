@@ -3,19 +3,18 @@
 
 use std::thread;
 
-use raytracer_core::Vector3;
-
-use crate::renderers::pixels::RendererPixels;
-use raytracer_core::rendering::renderer::{Dimensions, Renderer};
-use raytracer_core::shapes::sphere::Sphere;
-use raytracer_core::{Raytracer, Scene};
-
 use rand::rngs::SmallRng;
 use rand::SeedableRng;
-use raytracer_core::camera::Camera;
+
 use raytracer_core::materials::dielectric::Dielectric;
 use raytracer_core::materials::lambertian_diffuse::Lambertian;
 use raytracer_core::materials::metal::Metal;
+use raytracer_core::shapes::sphere::Sphere;
+use raytracer_core::Vector3;
+use raytracer_core::{Raytracer, Scene};
+
+use crate::renderers::pixels::RendererPixels;
+use crate::renderers::renderer::{Dimensions, Renderer};
 
 mod renderers;
 
@@ -25,13 +24,10 @@ fn main_loop() {
     let width = 1920.0 / 2.0;
     let height = 1080.0 / 2.0;
 
-    let mut renderer = RendererPixels::new(
-        Dimensions {
-            height: height as usize,
-            width: width as usize,
-        },
-        Camera::new(),
-    );
+    let mut renderer = RendererPixels::new(Dimensions {
+        height: height as usize,
+        width: width as usize,
+    });
     let set_pixel = renderer.pixel_accessor();
     eprint!("Scanlines remaining:\n");
     thread::spawn(move || {
@@ -62,7 +58,7 @@ fn main_loop() {
         let raytracer = Raytracer::new(width, height, rng);
 
         for _depth in 0..=SAMPLES_PER_PIXEL {
-            raytracer.generate(scene.as_slice(), 1, &set_pixel, rng);
+            raytracer.generate(scene.as_slice(), 100, &set_pixel, rng);
         }
         eprintln!("OK");
     });
