@@ -44,8 +44,8 @@ impl raytracer_core::PixelRenderer for PixelRendererCommunicator {
 }
 
 fn main_loop() {
-    let width = 1920.0 / 2.0;
-    let height = 1080.0 / 2.0;
+    let width = 1920.0;
+    let height = 1080.0;
 
     let (tx, rx) = mpsc::channel();
     let mut renderer = RendererPixels::new(
@@ -61,7 +61,7 @@ fn main_loop() {
         let sphere = Sphere::new(
             Vector3::new(-1.01, 0.0, -1.0),
             0.5,
-            Box::new(Dielectric::new(Vector3::new(1.0, 1.00, 1.00), 1.05)),
+            Box::new(Dielectric::new(Vector3::new(1.0, 0.6, 0.60), 1.05)),
         );
         let sphere2 = Sphere::new(
             Vector3::new(0.0, -100.5, -1.0),

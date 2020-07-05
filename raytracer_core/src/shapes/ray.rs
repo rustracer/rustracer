@@ -40,6 +40,7 @@ impl Ray {
             let maybe_new_collision = shape.collide(self, T_MIN, T_MAX);
 
             maybe_collision = match maybe_collision {
+                None => maybe_new_collision,
                 Some(collision) => match maybe_new_collision {
                     Some(new_collision)
                         if new_collision.dist_from_origin() < collision.dist_from_origin() =>
@@ -48,7 +49,6 @@ impl Ray {
                     }
                     _ => Some(collision),
                 },
-                _ => maybe_new_collision,
             }
         }
         maybe_collision

@@ -1,5 +1,8 @@
-use crate::PixelRendererCommunicator;
 use std::sync::mpsc::Sender;
+
+use raytracer_core::PixelRenderer;
+
+use crate::PixelRendererCommunicator;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Dimensions {
