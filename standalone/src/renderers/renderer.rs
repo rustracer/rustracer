@@ -1,4 +1,5 @@
-use raytracer_core::PixelRenderer;
+use crate::PixelRendererCommunicator;
+use std::sync::mpsc::Sender;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Dimensions {
@@ -6,12 +7,20 @@ pub struct Dimensions {
     pub(crate) height: usize,
 }
 
-pub trait Renderer {
-    fn new(dimensions: Dimensions) -> Self;
+pub enum Command {
+    Up,
+    Down,
+    Left,
+    Right,
+}
 
-    fn pixel_accessor(&mut self) -> Box<dyn PixelRenderer>;
+// TODO: this trait is useless for now..
+pub trait Renderer {
+    fn new(dimensions: Dimensions, tx: Sender<Command>) -> Self;
+
+    fn pixel_accessor(&mut self) -> PixelRendererCommunicator;
 
     // fn render(&self);
 
-    fn start_rendering(&mut self);
+    fn start_rendering(self);
 }
