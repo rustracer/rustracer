@@ -3,6 +3,7 @@
 use wasm_bindgen::prelude::*;
 
 use rand::prelude::*;
+use raytracer_core::materials::metal::Metal;
 use raytracer_core::shapes::sphere::Sphere;
 use raytracer_core::Vector3;
 use raytracer_core::{PixelColor, PixelPosition, Raytracer, Scene};
@@ -83,9 +84,21 @@ impl raytracer_core::PixelRenderer for RendererCommunicator {
 
 // Function to generate our checkerboard, pixel by pixel
 pub fn render() {
-    let sphere = Sphere::new_with_metal(Vector3::new(0.0, 0.0, -1.0), 0.5);
-    let sphere2 = Sphere::new(Vector3::new(0.0, -100.5, -1.0), 100.0);
-    let sphere3 = Sphere::new(Vector3::new(0.5, -0.4, -0.85), 0.1);
+    let sphere = Sphere::new(
+        Vector3::new(0.0, 0.0, -1.0),
+        0.5,
+        Box::new(Metal::new(Vector3::new(0.8, 0.8, 0.8), 0.0)),
+    );
+    let sphere2 = Sphere::new(
+        Vector3::new(0.0, -100.5, -1.0),
+        100.0,
+        Box::new(Metal::new(Vector3::new(0.8, 0.8, 0.8), 0.0)),
+    );
+    let sphere3 = Sphere::new(
+        Vector3::new(0.5, -0.4, -0.85),
+        0.1,
+        Box::new(Metal::new(Vector3::new(0.8, 0.8, 0.8), 0.0)),
+    );
     let scene: Scene = vec![&sphere, &sphere2, &sphere3];
     let rng = rand::rngs::StdRng::seed_from_u64(0);
     let mut raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, rng, RendererCommunicator {});
