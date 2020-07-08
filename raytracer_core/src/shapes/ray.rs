@@ -40,6 +40,7 @@ impl Ray {
             let maybe_new_collision = shape.collide(self, T_MIN, T_MAX);
 
             maybe_collision = match maybe_collision {
+                None => maybe_new_collision,
                 Some(collision) => match maybe_new_collision {
                     Some(new_collision)
                         if new_collision.dist_from_origin() < collision.dist_from_origin() =>
@@ -48,7 +49,6 @@ impl Ray {
                     }
                     _ => Some(collision),
                 },
-                _ => maybe_new_collision,
             }
         }
         maybe_collision
@@ -62,7 +62,10 @@ impl Ray {
 
         match may_collision {
             Some(collision) => {
-                let color_until_now = collision.bounce(self)._project_ray(scene, depth - 1);
+                let color_until_now = match collision.bounce(self) {
+                    Some(ray) => ray._project_ray(scene, depth - 1),
+                    None => Vector3::new(0.0, 0.0, 0.0),
+                };
                 let new_color = collision.color(self);
                 let ret = Color::new(
                     new_color.x * color_until_now.x,

@@ -1,13 +1,12 @@
+use std::borrow::Borrow;
+
 use nalgebra::Vector3;
 
-use crate::materials::lambertian_diffuse::Lambertian;
 use crate::materials::material::Material;
-
-use super::shape::Shape;
-use crate::materials::metal::Metal;
 use crate::shapes::collision::Collision;
 use crate::shapes::ray::Ray;
-use std::borrow::Borrow;
+
+use super::shape::Shape;
 
 pub struct Sphere {
     center: Vector3<f64>,
@@ -16,19 +15,11 @@ pub struct Sphere {
 }
 
 impl Sphere {
-    pub fn new(center: Vector3<f64>, radius: f64) -> Sphere {
+    pub fn new(center: Vector3<f64>, radius: f64, material: Box<dyn Material>) -> Sphere {
         Sphere {
             center,
             radius,
-            material: Box::new(Lambertian::new()),
-        }
-    }
-
-    pub fn new_with_metal(center: Vector3<f64>, radius: f64) -> Sphere {
-        Sphere {
-            center,
-            radius,
-            material: Box::new(Metal::new()),
+            material,
         }
     }
 }

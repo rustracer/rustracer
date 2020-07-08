@@ -4,15 +4,15 @@ use nalgebra::Vector3;
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 
 pub struct Camera {
-    origin: Vector3<f64>,
+    pub origin: Vector3<f64>,
     lower_left_corner: Vector3<f64>,
     horizontal: Vector3<f64>,
     vertical: Vector3<f64>,
 }
 
 impl Camera {
-    pub fn new() -> Camera {
-        let origin = Vector3::new(2_f64, 0_f64, 1_f64);
+    pub fn new(x: f64, y: f64, z: f64) -> Camera {
+        let origin = Vector3::new(x, y, z);
         let lookat = Vector3::new(0.0, 0.0, -1.0);
         let vup = Vector3::new(0.0, 1.0, 0.0);
         let vertical_field_of_view = 20_f64;

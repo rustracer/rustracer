@@ -10,8 +10,8 @@ use crate::camera::Camera;
 use crate::shapes::shape::Shape;
 use std::cell::Cell;
 
-mod camera;
-mod materials;
+pub mod camera;
+pub mod materials;
 pub mod shapes;
 
 #[derive(Debug, Clone, Copy)]
@@ -51,41 +51,45 @@ pub struct PixelCache {
 
 pub type Scene<'a> = Vec<&'a dyn Shape>;
 
-pub trait PixelRenderer = Fn(PixelPosition, PixelColor) + Send;
+pub trait PixelRenderer {
+    fn set_pixel(&mut self, pos: PixelPosition, color: PixelColor);
+    fn invalidate_pixels(&mut self);
+}
 
-pub struct Raytracer {
+pub struct Raytracer<R, S>
+where
+    R: rand::Rng + 'static + Send,
+    S: PixelRenderer,
+{
     pixel_cache: Vec<PixelCache>,
     width: f64,
     height: f64,
+    pub camera: Camera,
+    random: R,
+    renderer: S,
 }
 
 const MAX_SIMILAR_SAMPLE_FOR_A_PIXEL: u8 = 3;
 
-impl Raytracer {
-    pub fn new<R>(width: f64, height: f64, random: &mut R) -> Self
-    where
-        R: rand::Rng + 'static + Send,
-    {
-        let random_positions = all_pixels_at_random(height as i64, width as i64, random);
+impl<R, S> Raytracer<R, S>
+where
+    R: rand::Rng + 'static + Send,
+    S: PixelRenderer,
+{
+    pub fn new(width: f64, height: f64, mut random: R, renderer: S) -> Self {
+        let random_positions = all_pixels_at_random(height as i64, width as i64, &mut random);
 
         Raytracer {
             pixel_cache: random_positions,
             width,
             height,
+            camera: Camera::new(-1.8_f64, 1_f64, 2_f64),
+            random,
+            renderer,
         }
     }
 
-    pub fn generate<T, R>(
-        &self,
-        scene: &[&dyn Shape],
-        samples_per_pixel: i64,
-        set_pixel: &T,
-        random: &mut R,
-    ) where
-        T: PixelRenderer,
-        R: rand::Rng + 'static + Send,
-    {
-        let camera = Camera::new();
+    pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: i64) {
         let scale = 1.0 / samples_per_pixel as f64;
         for pixel in self.pixel_cache.as_slice() {
             if pixel.same_color_count.get() > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
@@ -94,10 +98,10 @@ impl Raytracer {
             let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
             for _s in 0..samples_per_pixel {
                 let offset_x =
-                    (pixel.pos.x as f64 + random.gen_range(0.0, 1.0)) / (self.width - 1.0);
+                    (pixel.pos.x as f64 + self.random.gen_range(0.0, 1.0)) / (self.width - 1.0);
                 let offset_y =
-                    (pixel.pos.y as f64 + random.gen_range(0.0, 1.0)) / (self.height - 1.0);
-                let r = camera.emit_ray_at(offset_x, offset_y);
+                    (pixel.pos.y as f64 + self.random.gen_range(0.0, 1.0)) / (self.height - 1.0);
+                let r = self.camera.emit_ray_at(offset_x, offset_y);
                 samples_color += r.project_ray(&scene);
             }
             let corrected_pixel_color = (samples_color * scale)
@@ -105,13 +109,20 @@ impl Raytracer {
                 .map(f64::sqrt)
                 .map(|c| c * 255.0);
             let color = PixelColor::from(corrected_pixel_color);
-            set_pixel(pixel.pos, color);
+            self.renderer.set_pixel(pixel.pos, color);
 
             if pixel.last_color.get() == color {
                 pixel.same_color_count.set(pixel.same_color_count.get() + 1);
             }
             pixel.last_color.set(color);
         }
+    }
+
+    pub fn invalidate_pixels(&mut self) {
+        let random_positions =
+            all_pixels_at_random(self.height as i64, self.width as i64, &mut self.random);
+        self.pixel_cache = random_positions;
+        self.renderer.invalidate_pixels();
     }
 }
 

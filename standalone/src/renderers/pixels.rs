@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{mpsc::Sender, Arc, RwLock};
 
 use log::error;
 use pixels::wgpu::Surface;
@@ -11,8 +11,9 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-use crate::renderers::renderer::{Dimensions, Renderer};
-use raytracer_core::{PixelColor, PixelRenderer};
+use crate::renderers::renderer::{Command, Dimensions, Renderer};
+use crate::PixelRendererCommunicator;
+use raytracer_core::PixelColor;
 use std::time::Instant;
 
 struct Size {
@@ -22,24 +23,22 @@ struct Size {
 
 pub struct RendererPixels {
     world: Arc<RwLock<World>>,
+    tx: Sender<Command>,
 }
 
 impl Renderer for RendererPixels {
-    fn new(dimensions: Dimensions) -> Self {
+    fn new(dimensions: Dimensions, tx: Sender<Command>) -> Self {
         Self {
             world: Arc::new(RwLock::new(World::new(dimensions.height, dimensions.width))),
+            tx,
         }
     }
 
-    fn pixel_accessor(&mut self) -> Box<dyn PixelRenderer> {
-        let world_accessor = Arc::clone(&self.world);
-        Box::new(move |position, color| {
-            let mut world = world_accessor.write().unwrap();
-            world.set_pixel(position.x, position.y, color)
-        })
+    fn pixel_accessor(&mut self) -> PixelRendererCommunicator {
+        PixelRendererCommunicator::new(Arc::clone(&self.world))
     }
 
-    fn start_rendering(&mut self) {
+    fn start_rendering(self) {
         let world_accessor = Arc::clone(&self.world);
         let world = world_accessor.read().unwrap();
         let mut input = WinitInputHelper::new();
@@ -68,6 +67,7 @@ impl Renderer for RendererPixels {
         };
         drop(world);
         let mut last_time = Instant::now();
+        let tx = self.tx;
         event_loop.run(move |event, _, control_flow| {
             let world = world_accessor.write().unwrap();
             // Draw the current frame
@@ -91,6 +91,18 @@ impl Renderer for RendererPixels {
                     return;
                 }
 
+                if input.key_pressed(VirtualKeyCode::Up) {
+                    tx.send(Command::Up).unwrap();
+                }
+                if input.key_pressed(VirtualKeyCode::Down) {
+                    tx.send(Command::Down).unwrap();
+                }
+                if input.key_pressed(VirtualKeyCode::Left) {
+                    tx.send(Command::Left).unwrap();
+                }
+                if input.key_pressed(VirtualKeyCode::Right) {
+                    tx.send(Command::Right).unwrap();
+                }
                 // Adjust high DPI factor
                 if let Some(factor) = input.scale_factor_changed() {
                     _hidpi_factor = factor;
@@ -117,7 +129,7 @@ struct Pixel {
     write_count: u64,
 }
 
-struct World {
+pub struct World {
     pixels: Vec<Pixel>,
     size: Size,
 }
@@ -152,6 +164,14 @@ impl World {
         pixel.color.g = (pixel.color.g as f32 * old_weight + new_pixel.g as f32 * new_weight) as u8;
         pixel.color.b = (pixel.color.b as f32 * old_weight + new_pixel.b as f32 * new_weight) as u8;
         pixel.write_count += 1;
+    }
+
+    pub fn invalidate_pixels(&mut self) {
+        let black = PixelColor { r: 0, g: 0, b: 0 };
+        for pixel in &mut self.pixels {
+            pixel.color = black;
+            pixel.write_count = 0;
+        }
     }
 
     /// Draw the `World` state to the frame buffer.
