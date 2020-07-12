@@ -43,5 +43,6 @@ jobs:
       # Cargo bloat
       - name: Run cargo bloat
         uses: orf/cargo-bloat-action@v1
+        bloat-args: --bin standalone
         with:
           token: ${{ secrets.GITHUB_TOKEN }} 
