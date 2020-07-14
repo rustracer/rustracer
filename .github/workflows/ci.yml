@@ -44,5 +44,5 @@ jobs:
       - name: Run cargo bloat
         uses: orf/cargo-bloat-action@v1
         with:
-          bloat_args: --bin standalone
+          exclude_packages: "raytracer_core"
           token: ${{ secrets.GITHUB_TOKEN }} 
