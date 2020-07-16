@@ -44,8 +44,8 @@ impl raytracer_core::PixelRenderer for PixelRendererCommunicator {
 }
 
 fn main_loop() {
-    let width = 1920.0;
-    let height = 1080.0;
+    let width = 1920.0 / 2.0;
+    let height = 1080.0 / 2.0;
 
     let (tx, rx) = mpsc::channel();
     let mut renderer = RendererPixels::new(
@@ -55,8 +55,9 @@ fn main_loop() {
         },
         tx,
     );
-    let set_pixel = renderer.pixel_accessor();
     eprint!("Scanlines remaining:\n");
+    let communicator = renderer.pixel_accessor();
+
     thread::spawn(move || {
         let sphere = Sphere::new(
             Vector3::new(-1.01, 0.0, -1.0),
@@ -80,12 +81,13 @@ fn main_loop() {
         );
 
         let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
+        let mut spp = 1;
         let rng = SmallRng::from_entropy();
-
-        let mut raytracer = Raytracer::new(width, height, rng, set_pixel);
+        let mut raytracer = Raytracer::new(width, height, rng, communicator);
 
         loop {
-            raytracer.generate(scene.as_slice(), 1);
+            spp *= 2;
+            raytracer.generate(scene.as_slice(), spp);
             while let Ok(received_command) = rx.try_recv() {
                 raytracer.invalidate_pixels();
                 // frame dependant is bad but it does the job.
