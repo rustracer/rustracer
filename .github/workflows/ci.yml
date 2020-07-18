@@ -42,7 +42,7 @@ jobs:
           key: bloat-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
       # Cargo bloat
       - name: Run cargo bloat
-        uses: orf/cargo-bloat-action@v1
+        uses: orf/cargo-bloat-action@v1.2.0
         with:
           exclude_packages: "raytracer_core"
           token: ${{ secrets.GITHUB_TOKEN }} 
