@@ -83,6 +83,7 @@ impl raytracer_core::PixelRenderer for RendererCommunicator {
 }
 
 // Function to generate our checkerboard, pixel by pixel
+#[wasm_bindgen]
 pub fn render() {
     let sphere = Sphere::new(
         Vector3::new(0.0, 0.0, -1.0),
