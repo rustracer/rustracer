@@ -89,29 +89,18 @@ fn main_loop() {
             spp *= 2;
             raytracer.generate(scene.as_slice(), spp);
             while let Ok(received_command) = rx.try_recv() {
+                spp = 1;
                 raytracer.invalidate_pixels();
                 // frame dependant is bad but it does the job.
                 raytracer.camera = match received_command {
-                    Command::Up => raytracer_core::camera::Camera::new(
-                        raytracer.camera.origin.x,
-                        raytracer.camera.origin.y + 0.1_f64,
-                        raytracer.camera.origin.z,
-                    ),
-                    Command::Down => raytracer_core::camera::Camera::new(
-                        raytracer.camera.origin.x,
-                        raytracer.camera.origin.y - 0.1_f64,
-                        raytracer.camera.origin.z,
-                    ),
-                    Command::Left => raytracer_core::camera::Camera::new(
-                        raytracer.camera.origin.x - 0.1_f64,
-                        raytracer.camera.origin.y,
-                        raytracer.camera.origin.z,
-                    ),
-                    Command::Right => raytracer_core::camera::Camera::new(
-                        raytracer.camera.origin.x + 0.1_f64,
-                        raytracer.camera.origin.y,
-                        raytracer.camera.origin.z,
-                    ),
+                    Command::Up => 
+                        raytracer.camera.move_camera(Vector3::new(0_f64,0_f64, 0.1_f64)),
+                    Command::Down => 
+                        raytracer.camera.move_camera(Vector3::new(0_f64,0_f64, -0.1_f64)),
+                    Command::Left =>
+                        raytracer.camera.rotate(Vector3::new(0_f64,-10_f64.to_radians(), 0_f64)),
+                    Command::Right => 
+                        raytracer.camera.rotate(Vector3::new(0_f64,10_f64.to_radians(), 0_f64)),
                 }
             }
         }

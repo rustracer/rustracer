@@ -103,10 +103,10 @@ impl Renderer for RendererPixels {
                 if input.key_pressed(VirtualKeyCode::Down) {
                     tx.send(Command::Down).unwrap();
                 }
-                if input.key_pressed(VirtualKeyCode::Left) {
+                if input.key_pressed(VirtualKeyCode::Q) {
                     tx.send(Command::Left).unwrap();
                 }
-                if input.key_pressed(VirtualKeyCode::Right) {
+                if input.key_pressed(VirtualKeyCode::D) {
                     tx.send(Command::Right).unwrap();
                 }
                 // Adjust high DPI factor
