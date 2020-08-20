@@ -81,13 +81,19 @@ fn main_loop() {
         );
 
         let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
-        let mut spp = 1;
+        let mut spp = 10;
         let rng = SmallRng::from_entropy();
         let mut raytracer = Raytracer::new(width, height, rng, communicator);
 
+        let mut generator = raytracer.get_new_generator();
         loop {
-            spp *= 2;
-            raytracer.generate(scene.as_slice(), spp);
+            //spp *= 2;
+            if let Some(pixel_result) = raytracer.generate_pixel(&mut generator, scene.as_slice(), spp) {
+                generator.index = generator.index + 1;
+            }
+            else {
+                generator.index = 0;  
+            }
             while let Ok(received_command) = rx.try_recv() {
                 spp = 1;
                 raytracer.invalidate_pixels();

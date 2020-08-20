@@ -55,12 +55,8 @@ pub trait PixelRenderer {
     fn invalidate_pixels(&mut self);
 }
 
-pub struct Generator<'a, R, S>
-where
-    R: rand::Rng + 'static + Send,
-    S: PixelRenderer, {
-    pub pixel_iter: core::slice::IterMut<'a, PixelCache>,
-    info: &'a mut RaytracerInfo<R, S>,
+pub struct Generator {
+    pub index: usize,
 }
 
 struct RaytracerInfo<R, S>
@@ -104,25 +100,28 @@ where
         }
     }
 
-    pub fn get_generator<'a>(&'a mut self) -> Generator<'a, R, S> {
-        return Generator {pixel_iter: self.pixel_cache.iter_mut(), info: &mut self.info}
+    pub fn get_new_generator(&self) -> Generator {
+        return Generator {index:0}
     }
 
-    pub fn generate_pixel(camera: &Camera, generator: &mut Generator<'_, R, S>, scene: &[&dyn Shape], samples: i64) -> Option<()> {
+    pub fn generate_pixel(&mut self, generator: &mut Generator, scene: &[&dyn Shape], samples: i64) -> Option<()> {
         // FIXME: scale is calculated each time but it's the same for all pixels
         let scale = 1.0 / samples as f64;
 
-        let mut pixel = generator.pixel_iter.next()?;
+        if generator.index >= self.pixel_cache.len() {
+            return None;
+        }
+        let mut pixel = &mut self.pixel_cache[generator.index];
         if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
             return Some(());
         }
         let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
         for _s in 0..samples {
             let offset_x =
-                (pixel.pos.x as f64 + generator.info.random.gen_range(0.0, 1.0)) / (generator.info.width - 1.0);
+                (pixel.pos.x as f64 + self.info.random.gen_range(0.0, 1.0)) / (self.info.width - 1.0);
             let offset_y =
-                (pixel.pos.y as f64 + generator.info.random.gen_range(0.0, 1.0)) / (generator.info.height - 1.0);
-            let r = camera.emit_ray_at(offset_x, offset_y);
+                (pixel.pos.y as f64 + self.info.random.gen_range(0.0, 1.0)) / (self.info.height - 1.0);
+            let r = self.camera.emit_ray_at(offset_x, offset_y);
             samples_color += r.project_ray(&scene);
         }
         let corrected_pixel_color = (samples_color * scale)
@@ -130,7 +129,7 @@ where
             .map(f64::sqrt)
             .map(|c| c * 255.0);
         let color = PixelColor::from(corrected_pixel_color);
-        generator.info.renderer.set_pixel(pixel.pos, color);
+        self.info.renderer.set_pixel(pixel.pos, color);
 
         if let Some(last_color) = pixel.last_color {
             if last_color == color {
@@ -144,12 +143,8 @@ where
     }
 
     pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: i64) {
-        let mut generator;
-        {
-            let iter = self.pixel_cache.iter_mut();
-            generator = Generator {pixel_iter: iter, info: &mut self.info};
-        } 
-        while Self::generate_pixel(&self.camera, &mut generator, scene, samples_per_pixel).is_some() {
+        let mut generator = self.get_new_generator();
+        while self.generate_pixel(&mut generator, scene, samples_per_pixel).is_some() {
 
         }
     }
