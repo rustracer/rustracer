@@ -55,17 +55,31 @@ pub trait PixelRenderer {
     fn invalidate_pixels(&mut self);
 }
 
+pub struct Generator<'a, R, S>
+where
+    R: rand::Rng + 'static + Send,
+    S: PixelRenderer, {
+    pub pixel_iter: core::slice::IterMut<'a, PixelCache>,
+    info: &'a mut RaytracerInfo<R, S>,
+}
+
+struct RaytracerInfo<R, S>
+where
+    R: rand::Rng + 'static + Send,
+    S: PixelRenderer, {
+    pub width: f64,
+    pub height: f64,
+    pub random: R,
+    pub renderer: S,
+}
 pub struct Raytracer<R, S>
 where
     R: rand::Rng + 'static + Send,
     S: PixelRenderer,
 {
-    pixel_cache: Vec<PixelCache>,
-    width: f64,
-    height: f64,
     pub camera: Camera,
-    random: R,
-    renderer: S,
+    pixel_cache: Vec<PixelCache>,
+    info: RaytracerInfo<R, S>,
 }
 
 const MAX_SIMILAR_SAMPLE_FOR_A_PIXEL: u8 = 3;
@@ -80,52 +94,71 @@ where
 
         Raytracer {
             pixel_cache: random_positions,
-            width,
-            height,
             camera: Camera::new(-1.8_f64, 1_f64, 2_f64),
-            random,
-            renderer,
+            info: RaytracerInfo {
+                width,
+                height,
+                random,
+                renderer,
+            }
         }
     }
 
-    pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: i64) {
-        let scale = 1.0 / samples_per_pixel as f64;
-        for pixel in self.pixel_cache.as_mut_slice() {
-            if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
-                continue;
-            }
-            let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
-            for _s in 0..samples_per_pixel {
-                let offset_x =
-                    (pixel.pos.x as f64 + self.random.gen_range(0.0, 1.0)) / (self.width - 1.0);
-                let offset_y =
-                    (pixel.pos.y as f64 + self.random.gen_range(0.0, 1.0)) / (self.height - 1.0);
-                let r = self.camera.emit_ray_at(offset_x, offset_y);
-                samples_color += r.project_ray(&scene);
-            }
-            let corrected_pixel_color = (samples_color * scale)
-                .map(|c| c.clamp(0.0, 1.0))
-                .map(f64::sqrt)
-                .map(|c| c * 255.0);
-            let color = PixelColor::from(corrected_pixel_color);
-            self.renderer.set_pixel(pixel.pos, color);
+    pub fn get_generator<'a>(&'a mut self) -> Generator<'a, R, S> {
+        return Generator {pixel_iter: self.pixel_cache.iter_mut(), info: &mut self.info}
+    }
 
-            if let Some(last_color) = pixel.last_color {
-                if last_color == color {
-                    pixel.same_color_count += 1;
-                } else {
-                    pixel.same_color_count = 0;
-                }
+    pub fn generate_pixel(camera: &Camera, generator: &mut Generator<'_, R, S>, scene: &[&dyn Shape], samples: i64) -> Option<()> {
+        // FIXME: scale is calculated each time but it's the same for all pixels
+        let scale = 1.0 / samples as f64;
+
+        let mut pixel = generator.pixel_iter.next()?;
+        if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
+            return Some(());
+        }
+        let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
+        for _s in 0..samples {
+            let offset_x =
+                (pixel.pos.x as f64 + generator.info.random.gen_range(0.0, 1.0)) / (generator.info.width - 1.0);
+            let offset_y =
+                (pixel.pos.y as f64 + generator.info.random.gen_range(0.0, 1.0)) / (generator.info.height - 1.0);
+            let r = camera.emit_ray_at(offset_x, offset_y);
+            samples_color += r.project_ray(&scene);
+        }
+        let corrected_pixel_color = (samples_color * scale)
+            .map(|c| c.clamp(0.0, 1.0))
+            .map(f64::sqrt)
+            .map(|c| c * 255.0);
+        let color = PixelColor::from(corrected_pixel_color);
+        generator.info.renderer.set_pixel(pixel.pos, color);
+
+        if let Some(last_color) = pixel.last_color {
+            if last_color == color {
+                pixel.same_color_count += 1;
+            } else {
+                pixel.same_color_count = 0;
             }
-            pixel.last_color = Some(color);
+        }
+        pixel.last_color = Some(color);
+        Some(())
+    }
+
+    pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: i64) {
+        let mut generator;
+        {
+            let iter = self.pixel_cache.iter_mut();
+            generator = Generator {pixel_iter: iter, info: &mut self.info};
+        } 
+        while Self::generate_pixel(&self.camera, &mut generator, scene, samples_per_pixel).is_some() {
+
         }
     }
 
     pub fn invalidate_pixels(&mut self) {
         let random_positions =
-            all_pixels_at_random(self.height as i64, self.width as i64, &mut self.random);
+            all_pixels_at_random(self.info.height as i64, self.info.width as i64, &mut self.info.random);
         self.pixel_cache = random_positions;
-        self.renderer.invalidate_pixels();
+        self.info.renderer.invalidate_pixels();
     }
 }
 

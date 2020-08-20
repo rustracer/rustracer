@@ -1,6 +1,6 @@
 use crate::shapes::ray::Ray;
 use nalgebra::Vector3;
-use nalgebra::geometry::UnitQuaternion;
+use nalgebra::{Rotation2, geometry::UnitQuaternion, Rotation3};
 
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 
@@ -50,11 +50,20 @@ impl Camera {
     }
 
     pub fn rotate(&self, rotation: Vector3<f64>) -> Self {
-        let new_rot = UnitQuaternion::from_euler_angles(rotation.x, rotation.y, rotation.y);
-        
-        Self::new_lookat(self.origin.x, self.origin.y, self.origin.z, new_rot * self.lookat)
+        let mut look_at_offset = self.lookat - self.origin;
+        //look_at_offset.y = 0.0;
+        let rotation = Rotation3::from_euler_angles(rotation.x, rotation.y, rotation.z);
+        look_at_offset = rotation * look_at_offset;
+        Self::new_lookat(self.origin.x, self.origin.y, self.origin.z, self.origin + look_at_offset)
     }
     pub fn move_camera(&self, dir: Vector3<f64>) -> Self {
-        Self::new_lookat(self.origin.x + dir.x, self.origin.y + dir.y, self.origin.z + dir.z, self.lookat + dir)
+        let mut look_at_offset = self.lookat - self.origin;
+        look_at_offset.y = 0.0;
+        let vup = Vector3::new(0.0, 1.0, 0.0);
+        let rotation = Rotation3::face_towards(&look_at_offset, &vup);
+        let real_dir = rotation.transform_vector(&dir);
+
+        //let real_dir = rotation;
+        Self::new_lookat(self.origin.x + real_dir.x, self.origin.y + real_dir.y, self.origin.z + real_dir.z, self.lookat + real_dir)
     }
 }

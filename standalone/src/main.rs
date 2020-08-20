@@ -98,9 +98,9 @@ fn main_loop() {
                     Command::Down => 
                         raytracer.camera.move_camera(Vector3::new(0_f64,0_f64, -0.1_f64)),
                     Command::Left =>
-                        raytracer.camera.rotate(Vector3::new(0_f64,-10_f64.to_radians(), 0_f64)),
+                        raytracer.camera.rotate(Vector3::new(0_f64,5_f64.to_radians(), 0_f64)),
                     Command::Right => 
-                        raytracer.camera.rotate(Vector3::new(0_f64,10_f64.to_radians(), 0_f64)),
+                        raytracer.camera.rotate(Vector3::new(0_f64,-5_f64.to_radians(), 0_f64)),
                 }
             }
         }
