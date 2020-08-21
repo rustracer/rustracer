@@ -1,12 +1,13 @@
 use std::borrow::Borrow;
 
-use nalgebra::Vector3;
+use nalgebra::{Vector2, Vector3};
 
 use crate::materials::material::Material;
 use crate::shapes::collision::Collision;
 use crate::shapes::ray::Ray;
 
 use super::shape::Shape;
+use std::f64::consts::PI;
 
 pub struct Sphere {
     center: Vector3<f64>,
@@ -61,6 +62,14 @@ impl Shape for Sphere {
 
     fn normal_at_position(&self, position: &Vector3<f64>) -> Vector3<f64> {
         (position - self.center) / self.radius
+    }
+
+    fn texture_coords_at_position(&self, position: &Vector3<f64>) -> Vector2<f64> {
+        let normal = position - self.center;
+        Vector2::new(
+            (1.0 + (normal.z.atan2(normal.x) as f64) / PI) * 0.5,
+            (normal.y / self.radius).acos() as f64 / PI,
+        )
     }
 
     fn material(&self) -> &dyn Material {
