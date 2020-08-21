@@ -11,7 +11,7 @@ use winit::{
 };
 use winit_input_helper::WinitInputHelper;
 
-use crate::renderers::renderer::{Command, Dimensions, Renderer};
+use crate::renderers::renderer::{Command, RotateCommand, MoveCommand, Dimensions, Renderer};
 use crate::PixelRendererCommunicator;
 use raytracer_core::PixelColor;
 use std::time::Instant;
@@ -97,31 +97,39 @@ impl Renderer for RendererPixels {
                     }
                 }
 
-                if input.key_pressed(VirtualKeyCode::Up) {
-                    tx.send(Command::Up).unwrap();
-                }
-                if input.key_pressed(VirtualKeyCode::Down) {
-                    tx.send(Command::Down).unwrap();
-                }
-                if input.key_pressed(VirtualKeyCode::Q) {
-                    tx.send(Command::Left).unwrap();
-                }
-                if input.key_pressed(VirtualKeyCode::D) {
-                    tx.send(Command::Right).unwrap();
-                }
-                // Adjust high DPI factor
-                if let Some(factor) = input.scale_factor_changed() {
-                    _hidpi_factor = factor;
-                }
 
-                // Resize the window
-                if let Some(size) = input.window_resized() {
-                    pixels.resize(size.width, size.height);
-                }
-
-                // dynamic time step from : https://gameprogrammingpatterns.com/game-loop.html
                 let elapsed = last_time.elapsed().as_secs_f32();
+                // dynamic time step from : https://gameprogrammingpatterns.com/game-loop.html
                 if elapsed > 1.0 / 10.0 {
+                    if input.key_held(VirtualKeyCode::Z) || input.key_held(VirtualKeyCode::Up) {
+                        tx.send(Command::Move(MoveCommand{x:0.0, z: 1_f64 * elapsed as f64, y: 0.0})).unwrap();
+                    }
+                    if input.key_held(VirtualKeyCode::S) || input.key_held(VirtualKeyCode::Down) {
+                        tx.send(Command::Move(MoveCommand{x:0.0, z: -1_f64 * elapsed as f64, y: 0.0})).unwrap();
+                    }
+                    if input.key_held(VirtualKeyCode::Q) || input.key_held(VirtualKeyCode::Left) {
+                        tx.send(Command::Move(MoveCommand{x:-1_f64 * elapsed as f64, z: 0.0 , y: 0.0})).unwrap();
+                    }
+                    if input.key_held(VirtualKeyCode::D) || input.key_held(VirtualKeyCode::Right) {
+                        tx.send(Command::Move(MoveCommand{x:1_f64 * elapsed as f64, z: 0.0, y: 0.0})).unwrap();
+                    }
+                    if input.key_held(VirtualKeyCode::A) {
+                        // TODO: send rotate
+                        tx.send(Command::Rotate(RotateCommand{x:0.0, z: 0.0, y: 1_f64 * elapsed as f64})).unwrap();
+                    }
+                    if input.key_held(VirtualKeyCode::E) {
+                        // TODO: send rotate
+                        tx.send(Command::Rotate(RotateCommand{x:0.0, z: 0.0, y: -1_f64 * elapsed as f64})).unwrap();
+                    }
+                    // Adjust high DPI factor
+                    if let Some(factor) = input.scale_factor_changed() {
+                        _hidpi_factor = factor;
+                    }
+    
+                    // Resize the window
+                    if let Some(size) = input.window_resized() {
+                        pixels.resize(size.width, size.height);
+                    }
                     last_time = Instant::now();
                     window.request_redraw();
                 }

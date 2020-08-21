@@ -99,14 +99,10 @@ fn main_loop() {
                 raytracer.invalidate_pixels();
                 // frame dependant is bad but it does the job.
                 raytracer.camera = match received_command {
-                    Command::Up => 
-                        raytracer.camera.move_camera(Vector3::new(0_f64,0_f64, 0.1_f64)),
-                    Command::Down => 
-                        raytracer.camera.move_camera(Vector3::new(0_f64,0_f64, -0.1_f64)),
-                    Command::Left =>
-                        raytracer.camera.rotate(Vector3::new(0_f64,5_f64.to_radians(), 0_f64)),
-                    Command::Right => 
-                        raytracer.camera.rotate(Vector3::new(0_f64,-5_f64.to_radians(), 0_f64)),
+                    Command::Move(movement) => 
+                        raytracer.camera.move_camera(Vector3::new(movement.x,movement.y, movement.z)),
+                    Command::Rotate(rotation) => 
+                        raytracer.camera.rotate(Vector3::new(rotation.x,rotation.y, rotation.z)),
                 }
             }
         }

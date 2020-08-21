@@ -8,11 +8,20 @@ pub struct Dimensions {
     pub(crate) height: usize,
 }
 
+pub struct MoveCommand {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+pub struct RotateCommand {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
 pub enum Command {
-    Up,
-    Down,
-    Left,
-    Right,
+    Move(MoveCommand),
+    Rotate(RotateCommand),
 }
 
 // TODO: this trait is useless for now..
