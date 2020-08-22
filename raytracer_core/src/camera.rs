@@ -1,6 +1,6 @@
 use crate::shapes::ray::Ray;
+use nalgebra::Rotation3;
 use nalgebra::Vector3;
-use nalgebra::{Rotation3};
 
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 
@@ -14,7 +14,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(x: f64, y: f64, z: f64) -> Camera {
-        Self::new_lookat(x,y,z,Vector3::new(0.0, 0.0, -1.0))
+        Self::new_lookat(x, y, z, Vector3::new(0.0, 0.0, -1.0))
     }
     pub fn new_lookat(x: f64, y: f64, z: f64, lookat: Vector3<f64>) -> Camera {
         let origin = Vector3::new(x, y, z);
@@ -54,7 +54,12 @@ impl Camera {
         //look_at_offset.y = 0.0;
         let rotation = Rotation3::from_euler_angles(rotation.x, rotation.y, rotation.z);
         look_at_offset = rotation * look_at_offset;
-        Self::new_lookat(self.origin.x, self.origin.y, self.origin.z, self.origin + look_at_offset)
+        Self::new_lookat(
+            self.origin.x,
+            self.origin.y,
+            self.origin.z,
+            self.origin + look_at_offset,
+        )
     }
     pub fn move_camera(&self, dir: Vector3<f64>) -> Self {
         let mut look_at_offset = self.lookat - self.origin;
@@ -64,6 +69,11 @@ impl Camera {
         let real_dir = rotation.transform_vector(&dir);
 
         //let real_dir = rotation;
-        Self::new_lookat(self.origin.x + real_dir.x, self.origin.y + real_dir.y, self.origin.z + real_dir.z, self.lookat + real_dir)
+        Self::new_lookat(
+            self.origin.x + real_dir.x,
+            self.origin.y + real_dir.y,
+            self.origin.z + real_dir.z,
+            self.lookat + real_dir,
+        )
     }
 }

@@ -88,21 +88,24 @@ fn main_loop() {
         let mut generator = raytracer.get_new_generator();
         loop {
             //spp *= 2;
-            if let Some(pixel_result) = raytracer.generate_pixel(&mut generator, scene.as_slice(), spp) {
+            if let Some(pixel_result) =
+                raytracer.generate_pixel(&mut generator, scene.as_slice(), spp)
+            {
                 generator.index = generator.index + 1;
-            }
-            else {
-                generator.index = 0;  
+            } else {
+                generator.index = 0;
             }
             while let Ok(received_command) = rx.try_recv() {
                 spp = 1;
                 raytracer.invalidate_pixels();
                 // frame dependant is bad but it does the job.
                 raytracer.camera = match received_command {
-                    Command::Move(movement) => 
-                        raytracer.camera.move_camera(Vector3::new(movement.x,movement.y, movement.z)),
-                    Command::Rotate(rotation) => 
-                        raytracer.camera.rotate(Vector3::new(rotation.x,rotation.y, rotation.z)),
+                    Command::Move(movement) => raytracer
+                        .camera
+                        .move_camera(Vector3::new(movement.x, movement.y, movement.z)),
+                    Command::Rotate(rotation) => raytracer
+                        .camera
+                        .rotate(Vector3::new(rotation.x, rotation.y, rotation.z)),
                 }
             }
         }

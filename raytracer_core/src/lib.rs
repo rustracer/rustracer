@@ -64,7 +64,8 @@ pub struct Generator {
 struct RaytracerInfo<R, S>
 where
     R: rand::Rng + 'static + Send,
-    S: PixelRenderer, {
+    S: PixelRenderer,
+{
     pub width: f64,
     pub height: f64,
     pub random: R,
@@ -98,15 +99,20 @@ where
                 height,
                 random,
                 renderer,
-            }
+            },
         }
     }
 
     pub fn get_new_generator(&self) -> Generator {
-        return Generator {index:0}
+        return Generator { index: 0 };
     }
 
-    pub fn generate_pixel(&mut self, generator: &mut Generator, scene: &[&dyn Shape], samples: u64) -> Option<()> {
+    pub fn generate_pixel(
+        &mut self,
+        generator: &mut Generator,
+        scene: &[&dyn Shape],
+        samples: u64,
+    ) -> Option<()> {
         if generator.index >= self.pixel_cache.len() {
             return None;
         }
@@ -116,10 +122,10 @@ where
         }
         let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
         for _s in 0..samples {
-            let offset_x =
-                (pixel.pos.x as f64 + self.info.random.gen_range(0.0, 1.0)) / (self.info.width - 1.0);
-            let offset_y =
-                (pixel.pos.y as f64 + self.info.random.gen_range(0.0, 1.0)) / (self.info.height - 1.0);
+            let offset_x = (pixel.pos.x as f64 + self.info.random.gen_range(0.0, 1.0))
+                / (self.info.width - 1.0);
+            let offset_y = (pixel.pos.y as f64 + self.info.random.gen_range(0.0, 1.0))
+                / (self.info.height - 1.0);
             let r = self.camera.emit_ray_at(offset_x, offset_y);
             samples_color += r.project_ray(&scene);
         }
@@ -149,14 +155,18 @@ where
 
     pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: u64) {
         let mut generator = self.get_new_generator();
-        while self.generate_pixel(&mut generator, scene, samples_per_pixel).is_some() {
-
-        }
+        while self
+            .generate_pixel(&mut generator, scene, samples_per_pixel)
+            .is_some()
+        {}
     }
 
     pub fn invalidate_pixels(&mut self) {
-        let random_positions =
-            all_pixels_at_random(self.info.height as i64, self.info.width as i64, &mut self.info.random);
+        let random_positions = all_pixels_at_random(
+            self.info.height as i64,
+            self.info.width as i64,
+            &mut self.info.random,
+        );
         self.pixel_cache = random_positions;
         self.info.renderer.invalidate_pixels();
     }
