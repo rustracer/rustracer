@@ -1,6 +1,6 @@
 use crate::shapes::ray::Ray;
 use nalgebra::Vector3;
-use nalgebra::{Rotation2, geometry::UnitQuaternion, Rotation3};
+use nalgebra::{Rotation3};
 
 const ASPECT_RATIO: f64 = 16.0 / 9.0;
 

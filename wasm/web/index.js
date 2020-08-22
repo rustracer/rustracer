@@ -31,7 +31,6 @@ const runWasm = async () => {
 
     // Generate a new scene in wasm
     rustWasm.render();
-
     // Create a Uint8Array to give us access to Wasm Memory
     const wasmByteMemoryArray = new Uint8Array(rustWasm.memory.buffer);
 

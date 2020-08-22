@@ -45,7 +45,9 @@ pub struct PixelPosition {
 pub struct PixelCache {
     pub pos: PixelPosition,
     pub last_color: Option<PixelColor>,
+    pub incremental_raw_light: Option<Vector3<f64>>,
     pub same_color_count: u8,
+    pub nb_samples: u64,
 }
 
 pub type Scene<'a> = Vec<&'a dyn Shape>;
@@ -104,10 +106,7 @@ where
         return Generator {index:0}
     }
 
-    pub fn generate_pixel(&mut self, generator: &mut Generator, scene: &[&dyn Shape], samples: i64) -> Option<()> {
-        // FIXME: scale is calculated each time but it's the same for all pixels
-        let scale = 1.0 / samples as f64;
-
+    pub fn generate_pixel(&mut self, generator: &mut Generator, scene: &[&dyn Shape], samples: u64) -> Option<()> {
         if generator.index >= self.pixel_cache.len() {
             return None;
         }
@@ -124,6 +123,12 @@ where
             let r = self.camera.emit_ray_at(offset_x, offset_y);
             samples_color += r.project_ray(&scene);
         }
+        if let Some(incremental_raw_light) = pixel.incremental_raw_light {
+            samples_color = samples_color + incremental_raw_light;
+        }
+        pixel.incremental_raw_light = Some(samples_color);
+        pixel.nb_samples = pixel.nb_samples + samples;
+        let scale = 1.0 / (pixel.nb_samples) as f64;
         let corrected_pixel_color = (samples_color * scale)
             .map(|c| c.clamp(0.0, 1.0))
             .map(f64::sqrt)
@@ -142,7 +147,7 @@ where
         Some(())
     }
 
-    pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: i64) {
+    pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: u64) {
         let mut generator = self.get_new_generator();
         while self.generate_pixel(&mut generator, scene, samples_per_pixel).is_some() {
 
@@ -183,6 +188,8 @@ where
                 last_color: None,
                 pos: pix,
                 same_color_count: 0,
+                nb_samples: 0,
+                incremental_raw_light: None,
             }
         })
         .collect();

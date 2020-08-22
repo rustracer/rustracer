@@ -13,7 +13,7 @@ use raytracer_core::{PixelColor, PixelPosition, Raytracer, Scene};
 const WIDTH: usize = 1920 / 5;
 const HEIGHT: usize = 1080 / 5;
 
-const SAMPLES_PER_PIXEL: i64 = 64;
+const SAMPLES_PER_PIXEL: u64 = 64;
 
 /*
  * 1. What is going on here?
