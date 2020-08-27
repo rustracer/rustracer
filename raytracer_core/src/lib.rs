@@ -18,6 +18,7 @@ pub struct PixelColor {
     pub r: u8,
     pub g: u8,
     pub b: u8,
+    pub status: GenerationStatus,
 }
 
 impl PartialEq for PixelColor {
@@ -32,6 +33,7 @@ impl From<Vector3<f64>> for PixelColor {
             r: vector3.x as u8,
             g: vector3.y as u8,
             b: vector3.z as u8,
+            status: GenerationStatus::Unstable,
         }
     }
 }
@@ -42,10 +44,17 @@ pub struct PixelPosition {
     pub y: usize,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GenerationStatus {
+    Unstable,
+    Final,
+}
+
 pub struct PixelCache {
     pub pos: PixelPosition,
     pub last_color: Option<PixelColor>,
     pub incremental_raw_light: Option<Vector3<f64>>,
+    pub status: GenerationStatus,
     pub same_color_count: u8,
     pub nb_samples: u64,
 }
@@ -117,7 +126,7 @@ where
             return None;
         }
         let mut pixel = &mut self.pixel_cache[generator.index];
-        if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
+        if pixel.status == GenerationStatus::Final {
             return Some(());
         }
         let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
@@ -139,9 +148,7 @@ where
             .map(|c| c.clamp(0.0, 1.0))
             .map(f64::sqrt)
             .map(|c| c * 255.0);
-        let color = PixelColor::from(corrected_pixel_color);
-        self.info.renderer.set_pixel(pixel.pos, color);
-
+        let mut color = PixelColor::from(corrected_pixel_color);
         if let Some(last_color) = pixel.last_color {
             if last_color == color {
                 pixel.same_color_count += 1;
@@ -149,7 +156,13 @@ where
                 pixel.same_color_count = 0;
             }
         }
+        if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
+            pixel.status = GenerationStatus::Final;
+        }
+        color.status = pixel.status;
         pixel.last_color = Some(color);
+        self.info.renderer.set_pixel(pixel.pos, color);
+
         Some(())
     }
 
@@ -198,6 +211,7 @@ where
                 last_color: None,
                 pos: pix,
                 same_color_count: 0,
+                status: GenerationStatus::Unstable,
                 nb_samples: 0,
                 incremental_raw_light: None,
             }

@@ -81,7 +81,7 @@ fn main_loop() {
         );
 
         let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
-        let mut spp = 10;
+        let mut spp = 1;
         let rng = SmallRng::from_entropy();
         let mut raytracer = Raytracer::new(width, height, rng, communicator);
 

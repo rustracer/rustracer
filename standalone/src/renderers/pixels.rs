@@ -93,7 +93,8 @@ impl Renderer for RendererPixels {
                 if input.key_pressed(VirtualKeyCode::M) {
                     world.render_mode = match world.render_mode {
                         RenderMode::Normal => RenderMode::PerfTime,
-                        RenderMode::PerfTime => RenderMode::Normal,
+                        RenderMode::PerfTime => RenderMode::Status,
+                        RenderMode::Status => RenderMode::Normal,
                     }
                 }
 
@@ -175,6 +176,7 @@ struct Pixel {
 enum RenderMode {
     Normal,
     PerfTime,
+    Status,
 }
 
 pub struct World {
@@ -188,7 +190,12 @@ impl World {
     fn new(height: usize, width: usize) -> Self {
         let count = width * height;
         let mut pixels = Vec::with_capacity(count);
-        let black = PixelColor { r: 0, g: 0, b: 0 };
+        let black = PixelColor {
+            r: 0,
+            g: 0,
+            b: 0,
+            status: raytracer_core::GenerationStatus::Unstable,
+        };
         pixels.resize_with(count, || Pixel {
             color: black,
             write_count: 0,
@@ -204,18 +211,7 @@ impl World {
     pub fn set_pixel(&mut self, x: usize, y: usize, new_pixel: PixelColor) {
         // NOTE: this is not thread safe
         let mut pixel = &mut self.pixels[y * self.size.width + x];
-        if pixel.write_count == 0 {
-            pixel.color = new_pixel;
-            pixel.write_count += 1;
-            return;
-        }
-        let new_weight = 1.0 - pixel.write_count as f32 / (pixel.write_count + 1) as f32;
-        let old_weight = 1.0 - new_weight;
-
-        pixel.color.r = (pixel.color.r as f32 * old_weight + new_pixel.r as f32 * new_weight) as u8;
-        pixel.color.g = (pixel.color.g as f32 * old_weight + new_pixel.g as f32 * new_weight) as u8;
-        pixel.color.b = (pixel.color.b as f32 * old_weight + new_pixel.b as f32 * new_weight) as u8;
-
+        pixel.color = new_pixel;
         pixel.write_count += 1;
         if pixel.write_count > self.max_write_count {
             self.max_write_count = pixel.write_count;
@@ -223,11 +219,17 @@ impl World {
     }
 
     pub fn invalidate_pixels(&mut self) {
-        let black = PixelColor { r: 0, g: 0, b: 0 };
+        let black = PixelColor {
+            r: 0,
+            g: 0,
+            b: 0,
+            status: raytracer_core::GenerationStatus::Unstable,
+        };
         for pixel in &mut self.pixels {
             pixel.color = black;
             pixel.write_count = 0;
         }
+        self.max_write_count = 0;
     }
 
     /// Draw the `World` state to the frame buffer.
@@ -241,12 +243,14 @@ impl World {
             // Normal color mode:
             let rgba = match self.render_mode {
                 RenderMode::Normal => [pixel.color.r, pixel.color.g, pixel.color.b, 0xff],
-                RenderMode::PerfTime => [
-                    ((pixel.write_count as f64 / self.max_write_count as f64) * 255.0) as u8,
-                    0,
-                    0,
-                    0xff,
-                ],
+                RenderMode::PerfTime => {
+                    let ratio = pixel.write_count as f64 / self.max_write_count as f64;
+                    [(ratio * 255.0) as u8, 0, 0, 0xff]
+                }
+                RenderMode::Status => {
+                    let isDone = pixel.color.status == raytracer_core::GenerationStatus::Final;
+                    [0, if isDone { 255 } else { 0 }, 0, 0xff]
+                }
             };
 
             raw_pixel.copy_from_slice(&rgba);
