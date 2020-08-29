@@ -70,34 +70,30 @@ pub struct Generator {
     pub index: usize,
 }
 
-struct RaytracerInfo<R, S>
+struct RaytracerInfo<R>
 where
     R: rand::Rng + 'static + Send,
-    S: PixelRenderer,
 {
     pub width: f64,
     pub height: f64,
     pub random: R,
-    pub renderer: S,
 }
-pub struct Raytracer<R, S>
+pub struct Raytracer<R>
 where
     R: rand::Rng + 'static + Send,
-    S: PixelRenderer,
 {
     pub camera: Camera,
     pixel_cache: Vec<PixelCache>,
-    info: RaytracerInfo<R, S>,
+    info: RaytracerInfo<R>,
 }
 
 const MAX_SIMILAR_SAMPLE_FOR_A_PIXEL: u8 = 3;
 
-impl<R, S> Raytracer<R, S>
+impl<R> Raytracer<R>
 where
     R: rand::Rng + 'static + Send,
-    S: PixelRenderer,
 {
-    pub fn new(width: f64, height: f64, mut random: R, renderer: S) -> Self {
+    pub fn new(width: f64, height: f64, mut random: R) -> Self {
         let random_positions = all_pixels_at_random(height as i64, width as i64, &mut random);
 
         Raytracer {
@@ -107,7 +103,6 @@ where
                 width,
                 height,
                 random,
-                renderer,
             },
         }
     }
@@ -116,11 +111,12 @@ where
         return Generator { index: 0 };
     }
 
-    pub fn generate_pixel(
+    pub fn generate_pixel<S: PixelRenderer>(
         &mut self,
         generator: &mut Generator,
         scene: &[&dyn Shape],
         samples: u64,
+        renderer: &mut S,
     ) -> Option<()> {
         if generator.index >= self.pixel_cache.len() {
             return None;
@@ -161,15 +157,15 @@ where
         }
         color.status = pixel.status;
         pixel.last_color = Some(color);
-        self.info.renderer.set_pixel(pixel.pos, color);
+        renderer.set_pixel(pixel.pos, color);
 
         Some(())
     }
 
-    pub fn generate(&mut self, scene: &[&dyn Shape], samples_per_pixel: u64) {
+    pub fn generate<S: PixelRenderer>(&mut self, scene: &[&dyn Shape], samples_per_pixel: u64, renderer: &mut S) {
         let mut generator = self.get_new_generator();
         while self
-            .generate_pixel(&mut generator, scene, samples_per_pixel)
+            .generate_pixel(&mut generator, scene, samples_per_pixel, renderer)
             .is_some()
         {}
     }
@@ -181,7 +177,6 @@ where
             &mut self.info.random,
         );
         self.pixel_cache = random_positions;
-        self.info.renderer.invalidate_pixels();
     }
 }
 

@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "standalone",
+    "game_ggez",
     "wasm",
     "raytracer_core",
     "web"
