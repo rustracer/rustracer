@@ -102,6 +102,7 @@ pub fn render() {
     );
     let scene: Scene = vec![&sphere, &sphere2, &sphere3];
     let rng = rand::rngs::StdRng::seed_from_u64(0);
-    let mut raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, rng, RendererCommunicator {});
-    raytracer.generate(scene.as_slice(), SAMPLES_PER_PIXEL);
+    let mut communicator = RendererCommunicator {};
+    let mut raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, rng);
+    raytracer.generate(scene.as_slice(), SAMPLES_PER_PIXEL, &mut communicator);
 }
