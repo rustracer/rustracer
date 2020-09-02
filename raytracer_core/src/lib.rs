@@ -162,7 +162,12 @@ where
         Some(())
     }
 
-    pub fn generate<S: PixelRenderer>(&mut self, scene: &[&dyn Shape], samples_per_pixel: u64, renderer: &mut S) {
+    pub fn generate<S: PixelRenderer>(
+        &mut self,
+        scene: &[&dyn Shape],
+        samples_per_pixel: u64,
+        renderer: &mut S,
+    ) {
         let mut generator = self.get_new_generator();
         while self
             .generate_pixel(&mut generator, scene, samples_per_pixel, renderer)

@@ -12,7 +12,7 @@ use raytracer_core::materials::lambertian_diffuse::Lambertian;
 use raytracer_core::materials::metal::Metal;
 use raytracer_core::shapes::sphere::Sphere;
 use raytracer_core::Vector3;
-use raytracer_core::{PixelColor, PixelPosition, Raytracer, Scene, PixelRenderer};
+use raytracer_core::{PixelColor, PixelPosition, PixelRenderer, Raytracer, Scene};
 use renderers::pixels::World;
 
 use crate::renderers::pixels::RendererPixels;

@@ -1,10 +1,14 @@
-use ggez::{graphics, Context, ContextBuilder, GameResult};
+use event::{KeyCode, KeyMods};
 use ggez::event::{self, EventHandler};
-use raytracer_core::{shapes::sphere::Sphere, Vector3, materials::{lambertian_diffuse::Lambertian, dielectric::Dielectric, metal::Metal}, Scene, Raytracer, Generator, PixelRenderer};
-use rand::{SeedableRng, prelude::SmallRng};
 use ggez::input::keyboard;
-use event::{KeyMods, KeyCode};
+use ggez::{graphics, Context, ContextBuilder, GameResult};
 use graphics::Text;
+use rand::{prelude::SmallRng, SeedableRng};
+use raytracer_core::{
+    materials::{dielectric::Dielectric, lambertian_diffuse::Lambertian, metal::Metal},
+    shapes::sphere::Sphere,
+    Generator, PixelRenderer, Raytracer, Scene, Vector3,
+};
 
 const WIDTH: usize = 1920 / 2;
 const HEIGHT: usize = 1080 / 2;
@@ -34,14 +38,16 @@ pub struct Renderer {
 
 impl Renderer {
     fn new() -> Self {
-        let mut pixels = vec![0;PIXELS_ARRAY_SIZE];
-        Self {
-            pixels,
-        }
+        let mut pixels = vec![0; PIXELS_ARRAY_SIZE];
+        Self { pixels }
     }
 }
 impl raytracer_core::PixelRenderer for Renderer {
-    fn set_pixel(&mut self, pos: raytracer_core::PixelPosition, new_pixel: raytracer_core::PixelColor) {
+    fn set_pixel(
+        &mut self,
+        pos: raytracer_core::PixelPosition,
+        new_pixel: raytracer_core::PixelColor,
+    ) {
         // NOTE: this is not thread safe
         let index = (PIXELS_ARRAY_SIZE - 4) - (((WIDTH - pos.x - 1) * 4) + pos.y * WIDTH * 4);
         self.pixels[index] = new_pixel.r;
@@ -51,7 +57,7 @@ impl raytracer_core::PixelRenderer for Renderer {
     }
 
     fn invalidate_pixels(&mut self) {
-        self.pixels = vec![0;PIXELS_ARRAY_SIZE];
+        self.pixels = vec![0; PIXELS_ARRAY_SIZE];
     }
 }
 struct MyGame<'a> {
@@ -84,22 +90,32 @@ impl<'a> EventHandler for MyGame<'a> {
         if keyboard::is_key_pressed(_ctx, KeyCode::Up) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.move_camera(Vector3::new(0_f64, 0_f64, movement))
-            }
-            else {
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .move_camera(Vector3::new(0_f64, 0_f64, movement))
+            } else {
                 let movement = 1_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.move_camera(Vector3::new(0_f64, 0_f64, movement))
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .move_camera(Vector3::new(0_f64, 0_f64, movement))
             }
             self.raytracer.invalidate_pixels();
             self.renderer.invalidate_pixels();
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Down) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 3_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.move_camera(Vector3::new(0_f64, 0_f64, -movement))
-            }
-            else {
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .move_camera(Vector3::new(0_f64, 0_f64, -movement))
+            } else {
                 let movement = 1_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.move_camera(Vector3::new(0_f64, 0_f64, -movement))
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .move_camera(Vector3::new(0_f64, 0_f64, -movement))
             }
             self.raytracer.invalidate_pixels();
             self.renderer.invalidate_pixels();
@@ -107,23 +123,32 @@ impl<'a> EventHandler for MyGame<'a> {
         if keyboard::is_key_pressed(_ctx, KeyCode::Left) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 2_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.rotate(Vector3::new(0_f64, movement, 0_f64))
-            }
-            else {
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .rotate(Vector3::new(0_f64, movement, 0_f64))
+            } else {
                 let movement = 0.5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.rotate(Vector3::new(0_f64, movement, 0_f64))
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .rotate(Vector3::new(0_f64, movement, 0_f64))
             }
             self.raytracer.invalidate_pixels();
             self.renderer.invalidate_pixels();
-        }
-        else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
+        } else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 2_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.rotate(Vector3::new(0_f64, -movement, 0_f64))
-            }
-            else {
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .rotate(Vector3::new(0_f64, -movement, 0_f64))
+            } else {
                 let movement = 0.5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
-                self.raytracer.camera = self.raytracer.camera.rotate(Vector3::new(0_f64, -movement, 0_f64))
+                self.raytracer.camera = self
+                    .raytracer
+                    .camera
+                    .rotate(Vector3::new(0_f64, -movement, 0_f64))
             }
             self.raytracer.invalidate_pixels();
             self.renderer.invalidate_pixels();
@@ -136,8 +161,12 @@ impl<'a> EventHandler for MyGame<'a> {
             //println!("looping");
             let mut i = 0;
             while i < pixels {
-                if let Some(pixel_result) = self.raytracer.generate_pixel(&mut self.generator, &self.scene, 1, &mut self.renderer)
-                {
+                if let Some(pixel_result) = self.raytracer.generate_pixel(
+                    &mut self.generator,
+                    &self.scene,
+                    1,
+                    &mut self.renderer,
+                ) {
                     self.generator.index = self.generator.index + 1;
                 } else {
                     //println!("full screen filled");
@@ -158,10 +187,20 @@ impl<'a> EventHandler for MyGame<'a> {
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
-        let image = ggez::graphics::Image::from_rgba8(ctx, WIDTH as u16, HEIGHT as u16, &self.renderer.pixels).unwrap();
+        let image = ggez::graphics::Image::from_rgba8(
+            ctx,
+            WIDTH as u16,
+            HEIGHT as u16,
+            &self.renderer.pixels,
+        )
+        .unwrap();
         graphics::draw(ctx, &image, ggez::graphics::DrawParam::new());
         let text = Text::new(format!("{:.1}", ggez::timer::fps(ctx)));
-        graphics::draw(ctx, &text, ggez::graphics::DrawParam::new().color(graphics::Color::from_rgb(255,0,0)));
+        graphics::draw(
+            ctx,
+            &text,
+            ggez::graphics::DrawParam::new().color(graphics::Color::from_rgb(255, 0, 0)),
+        );
         graphics::present(ctx)
     }
 }
@@ -177,7 +216,7 @@ fn main() {
             srgb: true,
         })
         .build()
-		.expect("aieee, could not create ggez context!");
+        .expect("aieee, could not create ggez context!");
 
     let sphere = Sphere::new(
         Vector3::new(-1.01, 0.0, -1.0),
@@ -204,11 +243,18 @@ fn main() {
     // Create an instance of your event handler.
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
-    let mut my_game = MyGame::new(&mut ctx, Dimensions{height: HEIGHT, width: WIDTH }, scene);
+    let mut my_game = MyGame::new(
+        &mut ctx,
+        Dimensions {
+            height: HEIGHT,
+            width: WIDTH,
+        },
+        scene,
+    );
 
     // Run!
     match event::run(&mut ctx, &mut event_loop, &mut my_game) {
         Ok(_) => println!("Exited cleanly."),
-        Err(e) => println!("Error occured: {}", e)
+        Err(e) => println!("Error occured: {}", e),
     }
 }
