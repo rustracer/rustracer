@@ -48,6 +48,9 @@ impl raytracer_core::PixelRenderer for Renderer {
         pos: raytracer_core::PixelPosition,
         new_pixel: raytracer_core::PixelColor,
     ) {
+        if pos.x >= WIDTH || pos.y >= HEIGHT {
+            return;
+        }
         // NOTE: this is not thread safe
         let index = (PIXELS_ARRAY_SIZE - 4) - (((WIDTH - pos.x - 1) * 4) + pos.y * WIDTH * 4);
         self.pixels[index] = new_pixel.r;
@@ -157,6 +160,7 @@ impl<'a> EventHandler for MyGame<'a> {
         let mut time_since_start = ggez::timer::time_since_start(_ctx);
         let mut retries = 0;
         const PIXELS: u32 = 10000;
+        let can_propagate = self.generator.get_index().0 == 0;
         while time_since_start < self.time_next_frame {
             let mut i = 0;
             while i < PIXELS {
@@ -177,6 +181,10 @@ impl<'a> EventHandler for MyGame<'a> {
             retries = retries + 1;
             time_since_start = ggez::timer::time_since_start(_ctx)
         }
+        if can_propagate {
+            self.generator.propagate_pixels(&mut self.renderer);
+        }
+        time_since_start = ggez::timer::time_since_start(_ctx);
         //println!("pixels: {} ; {} retries ; {} fps", retries * pixels, retries, ggez::timer::fps(_ctx));
         // FIXME: this fps calculation doesn't take into account time to (render + other work) (so the fps can drop significantly)
         // The fix would be to estimate the other work and substract it to time_next_frame.

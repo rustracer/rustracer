@@ -46,10 +46,13 @@ pub struct PixelPosition {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GenerationStatus {
+    NotStarted,
+    CopyNearPixel,
     Unstable,
     Final,
 }
 
+#[derive(Clone, Debug)]
 pub struct PixelCache {
     pub pos: PixelPosition,
     pub last_color: Option<PixelColor>,
@@ -100,6 +103,22 @@ impl RandomGenerator
         self.data.index = 0;
         self.data.pixel_cache = random_positions;
         self.data.full_screen_render_count = 0;
+    }
+    pub fn propagate_pixels<S: PixelRenderer>(&mut self, renderer: &mut S) {
+        // Propagate current pixel.
+        for index in 0..(self.data.pixel_cache.len() - 1) {
+            if matches!(self.data.pixel_cache[index].status, GenerationStatus::CopyNearPixel | GenerationStatus::NotStarted) {
+                continue;
+            }
+            let pos = self.data.pixel_cache[index].pos;
+            if let Some(color) = self.data.pixel_cache[index].last_color {
+                for x in (pos.x - 3)..(pos.x + 3) {
+                    for y in (pos.y - 3)..(pos.y + 3) {
+                        renderer.set_pixel(PixelPosition{x, y}, color);
+                    }
+                }    
+            }
+        }
     }
 }
 
@@ -203,6 +222,9 @@ where
                 pixel.same_color_count = 0;
             }
         }
+        else {
+            pixel.status = GenerationStatus::Unstable;
+        }
         if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
             pixel.status = GenerationStatus::Final;
         }
@@ -238,7 +260,7 @@ where
                 last_color: None,
                 pos: pix,
                 same_color_count: 0,
-                status: GenerationStatus::Unstable,
+                status: GenerationStatus::NotStarted,
                 nb_samples: 0,
                 incremental_raw_light: None,
             }

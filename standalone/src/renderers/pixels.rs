@@ -194,7 +194,7 @@ impl World {
             r: 0,
             g: 0,
             b: 0,
-            status: raytracer_core::GenerationStatus::Unstable,
+            status: raytracer_core::GenerationStatus::NotStarted,
         };
         pixels.resize_with(count, || Pixel {
             color: black,
@@ -223,7 +223,7 @@ impl World {
             r: 0,
             g: 0,
             b: 0,
-            status: raytracer_core::GenerationStatus::Unstable,
+            status: raytracer_core::GenerationStatus::NotStarted,
         };
         for pixel in &mut self.pixels {
             pixel.color = black;
