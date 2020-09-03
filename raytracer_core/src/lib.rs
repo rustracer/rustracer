@@ -66,8 +66,69 @@ pub trait PixelRenderer {
     fn invalidate_pixels(&mut self);
 }
 
-pub struct Generator {
+pub struct GeneratorData {
+    pub full_screen_render_count: u64,
     pub index: usize,
+    pub pixel_cache: Vec<PixelCache>,
+}
+
+pub struct RandomGenerator {
+    data: GeneratorData,
+}
+
+impl RandomGenerator
+{
+    pub fn new<R>(width: i64, height: i64, random: &mut R) -> RandomGenerator
+    where
+        R: rand::Rng + 'static + Send {
+            RandomGenerator {
+                data: GeneratorData {
+                    full_screen_render_count: 0,
+                    index: 0,
+                    pixel_cache: all_pixels_at_random(height, width, random)
+                }
+            }
+    }
+    pub fn invalidate_pixels<R>(&mut self, width: i64, height: i64, random: &mut R)
+    where
+        R: rand::Rng + 'static + Send {
+        let random_positions = all_pixels_at_random(
+            height as i64,
+            width as i64,
+            random,
+        );
+        self.data.index = 0;
+        self.data.pixel_cache = random_positions;
+        self.data.full_screen_render_count = 0;
+    }
+}
+
+impl GeneratorProgress for RandomGenerator {
+    fn get_pixel(&mut self) -> &mut PixelCache
+    {
+        return &mut self.data.pixel_cache[self.data.index];
+    }
+    fn next(&mut self) -> Option<()> {
+        self.data.index = self.data.index + 1;
+        if self.data.index == self.data.pixel_cache.len() {
+            self.data.index = 0;
+            self.data.full_screen_render_count = self.data.full_screen_render_count + 1;
+            None
+        }
+        else {
+            Some(())
+        }
+    }
+    fn get_index(&self) -> (u64, usize) {
+        (self.data.full_screen_render_count, self.data.index)
+    }
+}
+
+pub trait GeneratorProgress
+{
+    fn get_pixel(&mut self) -> &mut PixelCache;
+    fn next(&mut self) -> Option<()>;
+    fn get_index(&self) -> (u64, usize);
 }
 
 struct RaytracerInfo<R>
@@ -83,7 +144,6 @@ where
     R: rand::Rng + 'static + Send,
 {
     pub camera: Camera,
-    pixel_cache: Vec<PixelCache>,
     info: RaytracerInfo<R>,
 }
 
@@ -93,11 +153,9 @@ impl<R> Raytracer<R>
 where
     R: rand::Rng + 'static + Send,
 {
-    pub fn new(width: f64, height: f64, mut random: R) -> Self {
-        let random_positions = all_pixels_at_random(height as i64, width as i64, &mut random);
+    pub fn new(width: f64, height: f64, random: R) -> Self {
 
         Raytracer {
-            pixel_cache: random_positions,
             camera: Camera::new(-1.8_f64, 1_f64, 2_f64),
             info: RaytracerInfo {
                 width,
@@ -107,23 +165,16 @@ where
         }
     }
 
-    pub fn get_new_generator(&self) -> Generator {
-        return Generator { index: 0 };
-    }
-
-    pub fn generate_pixel<S: PixelRenderer>(
+    pub fn generate_pixel<S: PixelRenderer, G: GeneratorProgress>(
         &mut self,
-        generator: &mut Generator,
+        generator: &mut G,
         scene: &[&dyn Shape],
         samples: u64,
         renderer: &mut S,
-    ) -> Option<()> {
-        if generator.index >= self.pixel_cache.len() {
-            return None;
-        }
-        let mut pixel = &mut self.pixel_cache[generator.index];
+    ) {
+        let mut pixel = &mut generator.get_pixel();
         if pixel.status == GenerationStatus::Final {
-            return Some(());
+            return;
         }
         let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
         for _s in 0..samples {
@@ -158,30 +209,6 @@ where
         color.status = pixel.status;
         pixel.last_color = Some(color);
         renderer.set_pixel(pixel.pos, color);
-
-        Some(())
-    }
-
-    pub fn generate<S: PixelRenderer>(
-        &mut self,
-        scene: &[&dyn Shape],
-        samples_per_pixel: u64,
-        renderer: &mut S,
-    ) {
-        let mut generator = self.get_new_generator();
-        while self
-            .generate_pixel(&mut generator, scene, samples_per_pixel, renderer)
-            .is_some()
-        {}
-    }
-
-    pub fn invalidate_pixels(&mut self) {
-        let random_positions = all_pixels_at_random(
-            self.info.height as i64,
-            self.info.width as i64,
-            &mut self.info.random,
-        );
-        self.pixel_cache = random_positions;
     }
 }
 

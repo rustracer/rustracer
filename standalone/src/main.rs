@@ -12,7 +12,7 @@ use raytracer_core::materials::lambertian_diffuse::Lambertian;
 use raytracer_core::materials::metal::Metal;
 use raytracer_core::shapes::sphere::Sphere;
 use raytracer_core::Vector3;
-use raytracer_core::{PixelColor, PixelPosition, PixelRenderer, Raytracer, Scene};
+use raytracer_core::{PixelColor, PixelPosition, PixelRenderer, Raytracer, Scene, RandomGenerator, GeneratorProgress};
 use renderers::pixels::World;
 
 use crate::renderers::pixels::RendererPixels;
@@ -85,19 +85,14 @@ fn main_loop() {
         let rng = SmallRng::from_entropy();
         let mut raytracer = Raytracer::new(width, height, rng);
 
-        let mut generator = raytracer.get_new_generator();
+        let mut generator = RandomGenerator::new(height as i64, width as i64, &mut SmallRng::from_entropy());
         loop {
             //spp *= 2;
-            if let Some(pixel_result) =
-                raytracer.generate_pixel(&mut generator, scene.as_slice(), spp, &mut communicator)
-            {
-                generator.index = generator.index + 1;
-            } else {
-                generator.index = 0;
-            }
+            raytracer.generate_pixel(&mut generator, scene.as_slice(), spp, &mut communicator);
+            generator.next();
             while let Ok(received_command) = rx.try_recv() {
                 spp = 1;
-                raytracer.invalidate_pixels();
+                generator.invalidate_pixels(width as i64, height as i64, &mut SmallRng::from_entropy());
                 communicator.invalidate_pixels();
                 // frame dependant is bad but it does the job.
                 raytracer.camera = match received_command {
