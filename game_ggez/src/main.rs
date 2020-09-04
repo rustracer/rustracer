@@ -1,13 +1,17 @@
 use event::{KeyCode, KeyMods};
 use ggez::event::{self, EventHandler};
 use ggez::input::keyboard;
-use ggez::{graphics, Context, ContextBuilder, GameResult, nalgebra::{Point2, Point}};
-use graphics::{Text};
+use ggez::{
+    graphics,
+    nalgebra::Point2,
+    Context, ContextBuilder, GameResult,
+};
+use graphics::Text;
 use rand::{prelude::SmallRng, SeedableRng};
 use raytracer_core::{
     materials::{dielectric::Dielectric, lambertian_diffuse::Lambertian, metal::Metal},
     shapes::sphere::Sphere,
-    RandomGenerator, PixelRenderer, Raytracer, Scene, Vector3, GeneratorProgress,
+    GeneratorProgress, PixelRenderer, RandomGenerator, Raytracer, Scene, Vector3,
 };
 
 const WIDTH: usize = 1920 / 2;
@@ -76,7 +80,11 @@ impl<'a> MyGame<'a> {
         let rng = SmallRng::from_entropy();
         let raytracer = Raytracer::new(dimensions.width as f64, dimensions.height as f64, rng);
 
-        let generator = RandomGenerator::new(dimensions.width, dimensions.height, &mut SmallRng::from_entropy());
+        let generator = RandomGenerator::new(
+            dimensions.width,
+            dimensions.height,
+            &mut SmallRng::from_entropy(),
+        );
         MyGame {
             renderer: Renderer::new(),
             raytracer,
@@ -104,7 +112,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, movement))
             }
-            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
+            self.generator
+                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Down) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -120,7 +129,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, -movement))
             }
-            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
+            self.generator
+                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         }
         if keyboard::is_key_pressed(_ctx, KeyCode::Left) {
@@ -137,7 +147,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, movement, 0_f64))
             }
-            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
+            self.generator
+                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -153,7 +164,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, -movement, 0_f64))
             }
-            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
+            self.generator
+                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         }
         // Update code here...
@@ -170,19 +182,14 @@ impl<'a> EventHandler for MyGame<'a> {
                     1,
                     &mut self.renderer,
                 );
-                if self.generator.next().is_some() {
-                    // Continuing pixels
-                }
-                else {
-                    // println!("full screen filled");  
-                }
-                i = i + 1;
+                self.generator.next();
+                i += 1;
             }
-            retries = retries + 1;
+            retries += 1;
             time_since_start = ggez::timer::time_since_start(_ctx)
         }
         if can_propagate {
-            //self.generator.propagate_pixels(&mut self.renderer);
+            self.generator.propagate_pixels(&mut self.renderer);
         }
         time_since_start = ggez::timer::time_since_start(_ctx);
         //println!("pixels: {} ; {} retries ; {} fps", retries * pixels, retries, ggez::timer::fps(_ctx));
@@ -212,14 +219,23 @@ impl<'a> EventHandler for MyGame<'a> {
         graphics::draw(
             ctx,
             &bg,
-            ggez::graphics::DrawParam::new().dest(Point2::new(0.0 -2.0, 37.0 - 2.0)).scale([1.2, 1.2]).color(graphics::Color::from_rgb(0, 0, 0)),
+            ggez::graphics::DrawParam::new()
+                .dest(Point2::new(0.0 - 2.0, 37.0 - 2.0))
+                .scale([1.2, 1.2])
+                .color(graphics::Color::from_rgb(0, 0, 0)),
         )?;
         let progress = self.generator.get_index();
-        let ratio = Text::new(format!("{}, {:.1}", progress.0, progress.1 as f64 / (WIDTH * HEIGHT) as f64 * 100_f64));
+        let ratio = Text::new(format!(
+            "{}, {:.1}",
+            progress.0,
+            progress.1 as f64 / (WIDTH * HEIGHT) as f64 * 100_f64
+        ));
         graphics::draw(
             ctx,
             &ratio,
-            ggez::graphics::DrawParam::new().dest(Point2::new(0.0, 37.0)).color(graphics::Color::from_rgb(255, 255, 255)),
+            ggez::graphics::DrawParam::new()
+                .dest(Point2::new(0.0, 37.0))
+                .color(graphics::Color::from_rgb(255, 255, 255)),
         )?;
         graphics::present(ctx)
     }

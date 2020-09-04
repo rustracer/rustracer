@@ -6,7 +6,9 @@ use rand::prelude::*;
 use raytracer_core::materials::metal::Metal;
 use raytracer_core::shapes::sphere::Sphere;
 use raytracer_core::Vector3;
-use raytracer_core::{PixelColor, PixelPosition, Raytracer, Scene, RandomGenerator, GeneratorProgress};
+use raytracer_core::{
+    GeneratorProgress, PixelColor, PixelPosition, RandomGenerator, Raytracer, Scene,
+};
 // use rand_core::{RngCore, OsRng};
 
 // Define the size of our camera
@@ -104,13 +106,19 @@ pub fn render() {
     let rng = rand::rngs::StdRng::seed_from_u64(0);
     let mut communicator = RendererCommunicator {};
     let mut raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, rng);
-    let mut generator = RandomGenerator::new(HEIGHT, WIDTH, &mut rand::rngs::StdRng::seed_from_u64(0));
+    let mut generator =
+        RandomGenerator::new(HEIGHT, WIDTH, &mut rand::rngs::StdRng::seed_from_u64(0));
 
     loop {
-        raytracer.generate_pixel(&mut generator, scene.as_slice(), SAMPLES_PER_PIXEL, &mut communicator);
+        raytracer.generate_pixel(
+            &mut generator,
+            scene.as_slice(),
+            SAMPLES_PER_PIXEL,
+            &mut communicator,
+        );
 
         if generator.next().is_none() {
             break;
-        }  
-    } 
+        }
+    }
 }

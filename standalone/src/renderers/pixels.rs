@@ -248,8 +248,8 @@ impl World {
                     [(ratio * 255.0) as u8, 0, 0, 0xff]
                 }
                 RenderMode::Status => {
-                    let isDone = pixel.color.status == raytracer_core::GenerationStatus::Final;
-                    [0, if isDone { 255 } else { 0 }, 0, 0xff]
+                    let is_done = pixel.color.status == raytracer_core::GenerationStatus::Final;
+                    [0, if is_done { 255 } else { 0 }, 0, 0xff]
                 }
             };
 
