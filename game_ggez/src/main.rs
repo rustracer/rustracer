@@ -76,7 +76,7 @@ impl<'a> MyGame<'a> {
         let rng = SmallRng::from_entropy();
         let raytracer = Raytracer::new(dimensions.width as f64, dimensions.height as f64, rng);
 
-        let generator = RandomGenerator::new(dimensions.width as i64, dimensions.height as i64, &mut SmallRng::from_entropy());
+        let generator = RandomGenerator::new(dimensions.width, dimensions.height, &mut SmallRng::from_entropy());
         MyGame {
             renderer: Renderer::new(),
             raytracer,
@@ -104,7 +104,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, movement))
             }
-            self.generator.invalidate_pixels(WIDTH as i64, HEIGHT as i64, &mut SmallRng::from_entropy());
+            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Down) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -120,7 +120,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, -movement))
             }
-            self.generator.invalidate_pixels(WIDTH as i64, HEIGHT as i64, &mut SmallRng::from_entropy());
+            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         }
         if keyboard::is_key_pressed(_ctx, KeyCode::Left) {
@@ -137,7 +137,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, movement, 0_f64))
             }
-            self.generator.invalidate_pixels(WIDTH as i64, HEIGHT as i64, &mut SmallRng::from_entropy());
+            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -153,7 +153,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, -movement, 0_f64))
             }
-            self.generator.invalidate_pixels(WIDTH as i64, HEIGHT as i64, &mut SmallRng::from_entropy());
+            self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
             self.renderer.invalidate_pixels();
         }
         // Update code here...
@@ -182,7 +182,7 @@ impl<'a> EventHandler for MyGame<'a> {
             time_since_start = ggez::timer::time_since_start(_ctx)
         }
         if can_propagate {
-            self.generator.propagate_pixels(&mut self.renderer);
+            //self.generator.propagate_pixels(&mut self.renderer);
         }
         time_since_start = ggez::timer::time_since_start(_ctx);
         //println!("pixels: {} ; {} retries ; {} fps", retries * pixels, retries, ggez::timer::fps(_ctx));

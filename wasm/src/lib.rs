@@ -104,7 +104,7 @@ pub fn render() {
     let rng = rand::rngs::StdRng::seed_from_u64(0);
     let mut communicator = RendererCommunicator {};
     let mut raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, rng);
-    let mut generator = RandomGenerator::new(HEIGHT as i64, WIDTH as i64, &mut rand::rngs::StdRng::seed_from_u64(0));
+    let mut generator = RandomGenerator::new(HEIGHT, WIDTH, &mut rand::rngs::StdRng::seed_from_u64(0));
 
     loop {
         raytracer.generate_pixel(&mut generator, scene.as_slice(), SAMPLES_PER_PIXEL, &mut communicator);

@@ -43,6 +43,12 @@ pub struct PixelPosition {
     pub x: usize,
     pub y: usize,
 }
+#[derive(Debug, Clone, Copy)]
+pub struct PixelCachePosition {
+    pub x: usize,
+    pub y: usize,
+    pub index: usize,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GenerationStatus {
@@ -54,7 +60,6 @@ pub enum GenerationStatus {
 
 #[derive(Clone, Debug)]
 pub struct PixelCache {
-    pub pos: PixelPosition,
     pub last_color: Option<PixelColor>,
     pub incremental_raw_light: Option<Vector3<f64>>,
     pub status: GenerationStatus,
@@ -73,6 +78,9 @@ pub struct GeneratorData {
     pub full_screen_render_count: u64,
     pub index: usize,
     pub pixel_cache: Vec<PixelCache>,
+    pub pixels_order: Vec<PixelCachePosition>,
+    pub width: usize,
+    pub height: usize,
 }
 
 pub struct RandomGenerator {
@@ -81,39 +89,51 @@ pub struct RandomGenerator {
 
 impl RandomGenerator
 {
-    pub fn new<R>(width: i64, height: i64, random: &mut R) -> RandomGenerator
+    pub fn new<R>(width: usize, height: usize, random: &mut R) -> RandomGenerator
     where
         R: rand::Rng + 'static + Send {
             RandomGenerator {
                 data: GeneratorData {
                     full_screen_render_count: 0,
                     index: 0,
-                    pixel_cache: all_pixels_at_random(height, width, random)
+                    pixel_cache: vec![PixelCache {
+                            last_color: None,
+                            same_color_count: 0,
+                            status: GenerationStatus::NotStarted,
+                            nb_samples: 0,
+                            incremental_raw_light: None,
+                        };(width * height) as usize],
+                    pixels_order: get_random_positions(width as usize, height as usize, random),
+                    width,
+                    height,
                 }
             }
     }
-    pub fn invalidate_pixels<R>(&mut self, width: i64, height: i64, random: &mut R)
+    pub fn invalidate_pixels<R>(&mut self, width: usize, height: usize, random: &mut R)
     where
         R: rand::Rng + 'static + Send {
-        let random_positions = all_pixels_at_random(
-            height as i64,
-            width as i64,
-            random,
-        );
+        let random_positions = vec![PixelCache {
+            last_color: None,
+            same_color_count: 0,
+            status: GenerationStatus::NotStarted,
+            nb_samples: 0,
+            incremental_raw_light: None,
+        };(width * height) as usize];
         self.data.index = 0;
         self.data.pixel_cache = random_positions;
         self.data.full_screen_render_count = 0;
+        self.data.pixels_order = get_random_positions(width, height, random);
     }
     pub fn propagate_pixels<S: PixelRenderer>(&mut self, renderer: &mut S) {
         // Propagate current pixel.
-        for index in 0..(self.data.pixel_cache.len() - 1) {
+        for pixel_position in self.data.pixels_order.iter() {
+            let index = pixel_position.index;
             if matches!(self.data.pixel_cache[index].status, GenerationStatus::CopyNearPixel | GenerationStatus::NotStarted) {
                 continue;
             }
-            let pos = self.data.pixel_cache[index].pos;
             if let Some(color) = self.data.pixel_cache[index].last_color {
-                for x in (pos.x - 3)..(pos.x + 3) {
-                    for y in (pos.y - 3)..(pos.y + 3) {
+                for x in (pixel_position.x - 3)..(pixel_position.x + 3) {
+                    for y in (pixel_position.y - 3)..(pixel_position.y + 3) {
                         renderer.set_pixel(PixelPosition{x, y}, color);
                     }
                 }    
@@ -123,9 +143,10 @@ impl RandomGenerator
 }
 
 impl GeneratorProgress for RandomGenerator {
-    fn get_pixel(&mut self) -> &mut PixelCache
+    fn get_pixel(&mut self) -> (PixelCachePosition, &mut PixelCache)
     {
-        return &mut self.data.pixel_cache[self.data.index];
+        let position = self.data.pixels_order[self.data.index];
+        (position, &mut self.data.pixel_cache[position.index])
     }
     fn next(&mut self) -> Option<()> {
         self.data.index = self.data.index + 1;
@@ -145,7 +166,7 @@ impl GeneratorProgress for RandomGenerator {
 
 pub trait GeneratorProgress
 {
-    fn get_pixel(&mut self) -> &mut PixelCache;
+    fn get_pixel(&mut self) -> (PixelCachePosition, &mut PixelCache);
     fn next(&mut self) -> Option<()>;
     fn get_index(&self) -> (u64, usize);
 }
@@ -191,15 +212,15 @@ where
         samples: u64,
         renderer: &mut S,
     ) {
-        let mut pixel = &mut generator.get_pixel();
+        let  (pos, mut pixel) = generator.get_pixel();
         if pixel.status == GenerationStatus::Final {
             return;
         }
         let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
         for _s in 0..samples {
-            let offset_x = (pixel.pos.x as f64 + self.info.random.gen_range(0.0, 1.0))
+            let offset_x = (pos.x as f64 + self.info.random.gen_range(0.0, 1.0))
                 / (self.info.width - 1.0);
-            let offset_y = (pixel.pos.y as f64 + self.info.random.gen_range(0.0, 1.0))
+            let offset_y = (pos.y as f64 + self.info.random.gen_range(0.0, 1.0))
                 / (self.info.height - 1.0);
             let r = self.camera.emit_ray_at(offset_x, offset_y);
             samples_color += r.project_ray(&scene);
@@ -230,42 +251,22 @@ where
         }
         color.status = pixel.status;
         pixel.last_color = Some(color);
-        renderer.set_pixel(pixel.pos, color);
+        renderer.set_pixel(PixelPosition{x: pos.x, y:pos.y}, color);
     }
 }
 
-fn all_pixels_at_random<R>(height: i64, width: i64, rng: &mut R) -> Vec<PixelCache>
+fn get_random_positions<R>(width: usize, height: usize, rng: &mut R) -> Vec<PixelCachePosition>
 where
     R: rand::Rng + 'static + Send,
 {
-    let mut random_y: Vec<i64> = (0..height).rev().collect();
-    let mut random_x: Vec<i64> = (0..width).rev().collect();
-    random_y.as_mut_slice().shuffle(rng);
-    let mut random_positions: Vec<PixelCache> = random_y
-        .iter()
-        .flat_map(|y| -> Vec<PixelPosition> {
-            random_x.as_mut_slice().shuffle(rng);
-            random_x
-                .iter()
-                .map(|x| -> PixelPosition {
-                    PixelPosition {
-                        y: *y as usize,
-                        x: *x as usize,
-                    }
-                })
-                .collect()
-        })
-        .map(|pix| -> PixelCache {
-            PixelCache {
-                last_color: None,
-                pos: pix,
-                same_color_count: 0,
-                status: GenerationStatus::NotStarted,
-                nb_samples: 0,
-                incremental_raw_light: None,
-            }
-        })
-        .collect();
-    random_positions.as_mut_slice().shuffle(rng);
-    random_positions
+    let mut positions: Vec<PixelCachePosition> = Vec::with_capacity(height * width);
+    let mut index = 0;
+    for y in 0..height {
+        for x in 0..width {
+            positions.push(PixelCachePosition{x,y, index});
+            index = index + 1;
+        }
+    }
+    positions.shuffle(rng);
+    positions
 }
