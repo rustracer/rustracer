@@ -13,7 +13,7 @@ pub mod camera;
 pub mod materials;
 pub mod shapes;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct PixelColor {
     pub r: u8,
     pub g: u8,
@@ -50,10 +50,15 @@ pub struct PixelCachePosition {
     pub index: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
+pub struct CopyNearPixel {
+    pub distance: usize,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum GenerationStatus {
     NotStarted,
-    CopyNearPixel,
+    CopyNearPixel(CopyNearPixel),
     Unstable,
     Final,
 }
@@ -135,19 +140,47 @@ impl RandomGenerator {
         // Propagate current pixel.
         for pixel_position in self.data.pixels_order.iter() {
             let index = pixel_position.index;
+            //let pixel = &mut self.data.pixel_cache[index];
             if matches!(
                 self.data.pixel_cache[index].status,
-                GenerationStatus::CopyNearPixel | GenerationStatus::NotStarted
+                GenerationStatus::CopyNearPixel(_) | GenerationStatus::NotStarted
             ) {
                 continue;
             }
-            if let Some(color) = self.data.pixel_cache[index].last_color {
-                for x in (pixel_position.x - 3)..(pixel_position.x + 3) {
-                    for y in (pixel_position.y - 3)..(pixel_position.y + 3) {
-                        renderer.set_pixel(PixelPosition { x, y }, color);
+            if let Some(color) = self.data.pixel_cache[index].last_color.clone() {
+                let propagate = 3;
+                for x in (pixel_position.x - propagate)..(pixel_position.x + propagate) {
+                    for y in (pixel_position.y - propagate)..(pixel_position.y + propagate) {
+                        if let Some(near_index) = self.get_pixel_cache_index(x,y) {
+                            let near_pixel_cache = &mut self.data.pixel_cache[near_index];
+                            let distance = ((pixel_position.x as i64 - (x as i64).abs()).abs() + (pixel_position.y as i64 - (y as i64).abs()).abs()) as usize;
+                            if near_pixel_cache.status == GenerationStatus::NotStarted
+                            {
+                                near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
+                                renderer.set_pixel(PixelPosition { x, y }, color.clone());
+                            }
+                            else if let GenerationStatus::CopyNearPixel(copy) = &mut near_pixel_cache.status {
+                                if copy.distance <= distance {
+                                    continue;
+                                }
+                                near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
+                                renderer.set_pixel(PixelPosition { x, y }, color.clone());
+                            }
+                            // I am guessing These 2 lines would actually make the compiler optimize the ifs out.
+                            near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance:0});
+                            renderer.set_pixel(PixelPosition { x, y }, color.clone());
+                        }
                     }
                 }
             }
+        }
+    }
+    pub fn get_pixel_cache_index(&self, x: usize, y: usize) -> Option<usize> {
+        if x >= self.data.width || y >= self.data.height {
+            None
+        }
+        else {
+            Some(x + y * self.data.width)
         }
     }
 }
@@ -242,7 +275,7 @@ where
             .map(f64::sqrt)
             .map(|c| c * 255.0);
         let mut color = PixelColor::from(corrected_pixel_color);
-        if let Some(last_color) = pixel.last_color {
+        if let Some(last_color) = pixel.last_color.clone() {
             if last_color == color {
                 pixel.same_color_count += 1;
             } else {
@@ -254,8 +287,8 @@ where
         if pixel.same_color_count > MAX_SIMILAR_SAMPLE_FOR_A_PIXEL {
             pixel.status = GenerationStatus::Final;
         }
-        color.status = pixel.status;
-        pixel.last_color = Some(color);
+        color.status = pixel.status.clone();
+        pixel.last_color = Some(color.clone());
         renderer.set_pixel(PixelPosition { x: pos.x, y: pos.y }, color);
     }
 }

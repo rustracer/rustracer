@@ -97,6 +97,8 @@ impl<'a> MyGame<'a> {
 
 impl<'a> EventHandler for MyGame<'a> {
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
+        let mut time_since_start = ggez::timer::time_since_start(_ctx);
+        let time_begin_frame = time_since_start;
         // input code here...
         if keyboard::is_key_pressed(_ctx, KeyCode::Up) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -169,13 +171,12 @@ impl<'a> EventHandler for MyGame<'a> {
             self.renderer.invalidate_pixels();
         }
         // Update code here...
-        let mut time_since_start = ggez::timer::time_since_start(_ctx);
         let mut retries = 0;
-        const PIXELS: u32 = 10000;
+        let mut pixels: u32 = 100;
         let can_propagate = self.generator.get_index().0 == 0;
         while time_since_start < self.time_next_frame {
             let mut i = 0;
-            while i < PIXELS {
+            while i < pixels {
                 self.raytracer.generate_pixel(
                     &mut self.generator,
                     &self.scene,
@@ -185,6 +186,7 @@ impl<'a> EventHandler for MyGame<'a> {
                 self.generator.next();
                 i += 1;
             }
+            pixels += 100;
             retries += 1;
             time_since_start = ggez::timer::time_since_start(_ctx)
         }
@@ -192,11 +194,12 @@ impl<'a> EventHandler for MyGame<'a> {
             self.generator.propagate_pixels(&mut self.renderer);
         }
         time_since_start = ggez::timer::time_since_start(_ctx);
+        let time_for_frame = time_since_start - time_begin_frame;
         //println!("pixels: {} ; {} retries ; {} fps", retries * pixels, retries, ggez::timer::fps(_ctx));
         // FIXME: this fps calculation doesn't take into account time to (render + other work) (so the fps can drop significantly)
         // The fix would be to estimate the other work and substract it to time_next_frame.
         // Also, if the raytracer is done for current image, we should sleep!
-        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / 10_f64);
+        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / 10_f64) - (time_for_frame / 5);
         Ok(())
     }
 
