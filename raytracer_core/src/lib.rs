@@ -138,8 +138,9 @@ impl RandomGenerator {
     }
     pub fn propagate_pixels<S: PixelRenderer>(&mut self, renderer: &mut S) {
         // Propagate current pixel.
-        for pixel_position in self.data.pixels_order.iter() {
-            let index = pixel_position.index;
+        for index in 0..self.data.pixel_cache.len() {
+            let position_x = index % self.data.width;
+            let position_y = index / self.data.width;
             //let pixel = &mut self.data.pixel_cache[index];
             if matches!(
                 self.data.pixel_cache[index].status,
@@ -149,11 +150,14 @@ impl RandomGenerator {
             }
             if let Some(color) = self.data.pixel_cache[index].last_color.clone() {
                 let propagate = 3;
-                for x in (pixel_position.x - propagate)..(pixel_position.x + propagate) {
-                    for y in (pixel_position.y - propagate)..(pixel_position.y + propagate) {
+                for x in (position_x - propagate)..(position_x + propagate) {
+                    for y in (position_y - propagate)..(position_y + propagate) {
                         if let Some(near_index) = self.get_pixel_cache_index(x,y) {
                             let near_pixel_cache = &mut self.data.pixel_cache[near_index];
-                            let distance = ((pixel_position.x as i64 - (x as i64).abs()).abs() + (pixel_position.y as i64 - (y as i64).abs()).abs()) as usize;
+                            if index == near_index {
+                                continue;
+                            }
+                            let distance = ((position_x as i64 - (x as i64).abs()).abs() + (position_y as i64 - (y as i64).abs()).abs()) as usize;
                             if near_pixel_cache.status == GenerationStatus::NotStarted
                             {
                                 near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
@@ -166,9 +170,9 @@ impl RandomGenerator {
                                 near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
                                 renderer.set_pixel(PixelPosition { x, y }, color.clone());
                             }
-                            // I am guessing These 2 lines would actually make the compiler optimize the ifs out.
-                            near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance:0});
-                            renderer.set_pixel(PixelPosition { x, y }, color.clone());
+                            // *///I am guessing These 2 lines would actually make the compiler optimize the ifs out.
+                            //near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
+                            //renderer.set_pixel(PixelPosition { x, y }, color.clone());
                         }
                     }
                 }

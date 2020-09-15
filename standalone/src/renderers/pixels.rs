@@ -197,7 +197,7 @@ impl World {
             status: raytracer_core::GenerationStatus::NotStarted,
         };
         pixels.resize_with(count, || Pixel {
-            color: black,
+            color: black.clone(),
             write_count: 0,
         });
         Self {
@@ -226,7 +226,7 @@ impl World {
             status: raytracer_core::GenerationStatus::NotStarted,
         };
         for pixel in &mut self.pixels {
-            pixel.color = black;
+            pixel.color = black.clone();
             pixel.write_count = 0;
         }
         self.max_write_count = 0;

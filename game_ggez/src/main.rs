@@ -73,6 +73,7 @@ struct MyGame<'a> {
     generator: RandomGenerator,
     scene: Scene<'a>,
     time_next_frame: std::time::Duration,
+    random: SmallRng,
 }
 
 impl<'a> MyGame<'a> {
@@ -91,6 +92,7 @@ impl<'a> MyGame<'a> {
             generator,
             scene,
             time_next_frame: ggez::timer::f64_to_duration(0_f64),
+            random: SmallRng::from_entropy(),
         }
     }
 }
@@ -99,6 +101,7 @@ impl<'a> EventHandler for MyGame<'a> {
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
         let mut time_since_start = ggez::timer::time_since_start(_ctx);
         let time_begin_frame = time_since_start;
+        let mut mustInvalidate = false;
         // input code here...
         if keyboard::is_key_pressed(_ctx, KeyCode::Up) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -114,9 +117,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, movement))
             }
-            self.generator
-                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
-            self.renderer.invalidate_pixels();
+            mustInvalidate = true;
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Down) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 3_f64 * ggez::timer::delta(_ctx).as_secs_f64();
@@ -131,9 +132,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, -movement))
             }
-            self.generator
-                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
-            self.renderer.invalidate_pixels();
+            mustInvalidate = true;
         }
         if keyboard::is_key_pressed(_ctx, KeyCode::Left) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -149,9 +148,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, movement, 0_f64))
             }
-            self.generator
-                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
-            self.renderer.invalidate_pixels();
+            mustInvalidate = true;
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 2_f64 * ggez::timer::delta(_ctx).as_secs_f64();
@@ -166,17 +163,21 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, -movement, 0_f64))
             }
+            mustInvalidate = true;
+        }
+        if mustInvalidate
+        {
             self.generator
-                .invalidate_pixels(WIDTH, HEIGHT, &mut SmallRng::from_entropy());
-            self.renderer.invalidate_pixels();
+                .invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
+            //self.renderer.invalidate_pixels();
         }
         // Update code here...
         let mut retries = 0;
-        let mut pixels: u32 = 100;
+        const PIXELS: u32 = 1300;
         let can_propagate = self.generator.get_index().0 == 0;
         while time_since_start < self.time_next_frame {
             let mut i = 0;
-            while i < pixels {
+            while i < PIXELS {
                 self.raytracer.generate_pixel(
                     &mut self.generator,
                     &self.scene,
@@ -186,7 +187,6 @@ impl<'a> EventHandler for MyGame<'a> {
                 self.generator.next();
                 i += 1;
             }
-            pixels += 100;
             retries += 1;
             time_since_start = ggez::timer::time_since_start(_ctx)
         }
@@ -199,7 +199,7 @@ impl<'a> EventHandler for MyGame<'a> {
         // FIXME: this fps calculation doesn't take into account time to (render + other work) (so the fps can drop significantly)
         // The fix would be to estimate the other work and substract it to time_next_frame.
         // Also, if the raytracer is done for current image, we should sleep!
-        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / 10_f64) - (time_for_frame / 5);
+        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / 13_f64) - (time_for_frame / 10);
         Ok(())
     }
 
