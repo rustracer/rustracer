@@ -13,21 +13,6 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: nightly
-      - uses: actions-rs/cargo@v1
-        with:
-          toolchain: nightly
-          command: check
-          args: --release --all
-  cargo_bloat:
-    runs-on: ubuntu-latest
-    steps:
-      # FIXME: Dependency installations should be part of the image
-      - run: sudo apt-get install pkg-config libasound2-dev libudev-dev
-      - uses: actions/checkout@master
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
       # Cache, see: https://github.com/orf/cargo-bloat-example/blob/master/.github/workflows/bloat.yml
       - name: Cache cargo registry
         uses: actions/cache@v1
@@ -44,9 +29,15 @@ jobs:
         with:
           path: target
           key: bloat-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      # Simple check to avoid lengthy CI
+      - uses: actions-rs/cargo@v1
+        with:
+          toolchain: nightly
+          command: check
+          args: --release --all
       # Cargo bloat
       - name: Run cargo bloat
         uses: orf/cargo-bloat-action@v1.2.0
         with:
           exclude_packages: "raytracer_core"
-          token: ${{ secrets.GITHUB_TOKEN }} 
+          token: ${{ secrets.GITHUB_TOKEN }}
