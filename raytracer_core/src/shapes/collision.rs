@@ -1,4 +1,4 @@
-use nalgebra::Vector3;
+use nalgebra::{Vector2, Vector3};
 
 use crate::shapes::ray::{Color, Ray};
 use crate::shapes::shape::Shape;
@@ -32,6 +32,10 @@ impl Collision<'_> {
 
     pub fn color(&self, ray: &Ray) -> Color {
         self.shape.material().scatter(ray, self)
+    }
+
+    pub fn texture_coordinates(&self) -> Vector2<f64> {
+        self.shape.texture_coords_at_position(&self.position)
     }
 
     pub fn bounce(&self, ray: &Ray) -> Option<Ray> {

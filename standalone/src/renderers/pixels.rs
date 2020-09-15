@@ -210,6 +210,9 @@ impl World {
 
     pub fn set_pixel(&mut self, x: usize, y: usize, new_pixel: PixelColor) {
         // NOTE: this is not thread safe
+        if (x >= self.size.width || y >= self.size.height) {
+            return;
+        }
         let mut pixel = &mut self.pixels[y * self.size.width + x];
         pixel.color = new_pixel;
         pixel.write_count += 1;
