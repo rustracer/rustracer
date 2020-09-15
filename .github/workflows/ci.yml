@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # FIXME: Dependency installations should be part of the image
-      - run: sudo apt-get install pkg-config libasound2-dev
+      - run: sudo apt-get install pkg-config libasound2-dev libudev-dev
       - uses: actions/checkout@master
       - name: Install Rust
         uses: actions-rs/toolchain@v1
