@@ -19,6 +19,8 @@ jobs:
   cargo_bloat:
     runs-on: ubuntu-latest
     steps:
+      # FIXME: Dependency installations should be part of the image
+      - run: apt-get install pkg-config
       - uses: actions/checkout@master
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -42,7 +44,6 @@ jobs:
           key: bloat-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
       # Cargo bloat
       - name: Run cargo bloat
-        run: apt-get install pkg-config
         uses: orf/cargo-bloat-action@v1.2.0
         with:
           exclude_packages: "raytracer_core"
