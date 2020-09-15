@@ -17,6 +17,8 @@ use renderers::pixels::World;
 
 use crate::renderers::pixels::RendererPixels;
 use crate::renderers::renderer::{Command, Dimensions, Renderer};
+use raytracer_core::materials::texture::Texture;
+use std::path::Path;
 
 mod renderers;
 
@@ -62,7 +64,7 @@ fn main_loop() {
         let sphere = Sphere::new(
             Vector3::new(-1.01, 0.0, -1.0),
             0.5,
-            Box::new(Dielectric::new(Vector3::new(1.0, 0.6, 0.60), 1.05)),
+            Box::new(Dielectric::new(Vector3::new(1.0, 0.8, 0.80), 1.05)),
         );
         let sphere2 = Sphere::new(
             Vector3::new(0.0, -100.5, -1.0),
@@ -77,7 +79,9 @@ fn main_loop() {
         let sphere4 = Sphere::new(
             Vector3::new(-0.0, 0.0, -1.0),
             0.5,
-            Box::new(Metal::new(Vector3::new(0.8, 0.6, 0.2), 0.5)),
+            Box::new(
+                Texture::load_from_file(Path::new("textures/bergsjostolen.jpg"), 1.0).unwrap(),
+            ),
         );
 
         let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
@@ -91,7 +95,7 @@ fn main_loop() {
             if let Some(pixel_result) =
                 raytracer.generate_pixel(&mut generator, scene.as_slice(), spp)
             {
-                generator.index = generator.index + 1;
+                generator.index += 1;
             } else {
                 generator.index = 0;
             }

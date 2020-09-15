@@ -7,6 +7,16 @@ const T_MAX: f64 = 100_000.0;
 
 pub type Color = Vector3<f64>;
 
+trait Blendable {
+    fn blend(&self, other: &Color) -> Color;
+}
+
+impl Blendable for Color {
+    fn blend(&self, other: &Color) -> Self {
+        Color::new(self.x * other.x, self.y * other.y, self.z * other.z)
+    }
+}
+
 pub struct Ray {
     origin: Vector3<f64>,
     direction: Vector3<f64>,
@@ -62,16 +72,11 @@ impl Ray {
 
         match may_collision {
             Some(collision) => {
-                let new_color = collision.color(self);
-                let color_until_now = match collision.bounce(self) {
-                    Some(ray) => ray._project_ray(scene, depth - 1),
-                    None => Vector3::new(0.0, 0.0, 0.0),
-                };
-                Color::new(
-                    new_color.x * color_until_now.x,
-                    new_color.y * color_until_now.y,
-                    new_color.z * color_until_now.z,
-                )
+                let new_color: Color = collision.color(self);
+                match collision.bounce(self) {
+                    Some(ray) => new_color.blend(&ray._project_ray(scene, depth - 1)),
+                    None => new_color,
+                }
                 // eprintln!("{} + {} => {}", new_color, color_until_now, ret);
                 // handle recursion here 0.5 * diffusion_ray._project_ray(scene, depth - 1)
             }
