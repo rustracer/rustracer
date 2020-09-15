@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # FIXME: Dependency installations should be part of the image
-      - run: apt-get install pkg-config
+      - run: sudo apt-get install pkg-config
       - uses: actions/checkout@master
       - name: Install Rust
         uses: actions-rs/toolchain@v1
