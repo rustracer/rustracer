@@ -174,6 +174,9 @@ impl<'a> EventHandler for MyGame<'a> {
         {
             self.generator
                 .invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
+            // NOTE: not invalidating renderer pixels is a great way to gain performance with very minimal visual impact
+            // ----> Also, some might argue that the visual is better WITHOUT invalidating renderer pixels.
+            // ----> without a smart #pixelcache solution though, we don't have much choice.
             self.renderer.invalidate_pixels();
             // FIXME: #pixelcache: dirty hack to take radius into account
             if mustInvalidate {
