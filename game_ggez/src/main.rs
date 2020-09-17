@@ -74,6 +74,8 @@ struct MyGame<'a> {
     scene: Scene<'a>,
     time_next_frame: std::time::Duration,
     random: SmallRng,
+    current_eye_radius: f64,
+    target_eye_radius: f64,
 }
 
 impl<'a> MyGame<'a> {
@@ -93,6 +95,8 @@ impl<'a> MyGame<'a> {
             scene,
             time_next_frame: ggez::timer::f64_to_duration(0_f64),
             random: SmallRng::from_entropy(),
+            current_eye_radius: 0_f64,
+            target_eye_radius: 100_f64,
         }
     }
 }
@@ -165,12 +169,25 @@ impl<'a> EventHandler for MyGame<'a> {
             }
             mustInvalidate = true;
         }
-        if mustInvalidate
+        // FIXME: #pixelcache: This condition should exist to avoid cleaning correct pixels
+        //if mustInvalidate
         {
             self.generator
                 .invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
-            //self.renderer.invalidate_pixels();
+            self.renderer.invalidate_pixels();
+            // FIXME: #pixelcache: dirty hack to take radius into account
+            if mustInvalidate {
+            self.target_eye_radius = 50_f64;
+            }
         }
+        self.current_eye_radius = move_towards(self.current_eye_radius, self.target_eye_radius, 300_f64 *  ggez::timer::delta(_ctx).as_secs_f64());
+        self.target_eye_radius = move_towards(self.target_eye_radius, 200_f64, 100_f64 *  ggez::timer::delta(_ctx).as_secs_f64());
+        
+        let mouse_position = ggez::input::mouse::position(_ctx);
+        let radius = self.current_eye_radius as usize;
+        let positions_around_mouse = raytracer_core::get_positions_around(WIDTH, HEIGHT, &mut self.random, mouse_position.x as usize, HEIGHT - mouse_position.y as usize, radius);
+        self.generator.set_pixels_order(WIDTH, HEIGHT, positions_around_mouse);
+        
         // Update code here...
         let mut retries = 0;
         const PIXELS: u32 = 1300;
@@ -199,17 +216,28 @@ impl<'a> EventHandler for MyGame<'a> {
         // FIXME: this fps calculation doesn't take into account time to (render + other work) (so the fps can drop significantly)
         // The fix would be to estimate the other work and substract it to time_next_frame.
         // Also, if the raytracer is done for current image, we should sleep!
-        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / 13_f64) - (time_for_frame / 10);
+        let target_fps = 20_f64;
+        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / target_fps) - (time_for_frame / 10);
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx, graphics::BLACK);
+        /*let pixels: Vec<[u8;4]> = self.generator.get_raw_pixels().iter().map(|p| {
+            if let Some(color) = &p.last_color {
+                [color.r, color.g, color.b, 255]
+            }
+            else {
+                [0,0,0,0]
+            }
+        }).collect();
+        let pixels: Vec<u8> = pixels.iter().flatten().copied().collect();*/
+        let pixels = &self.renderer.pixels;
         let image = ggez::graphics::Image::from_rgba8(
             ctx,
             WIDTH as u16,
             HEIGHT as u16,
-            &self.renderer.pixels,
+            pixels,
         )?;
         graphics::draw(ctx, &image, ggez::graphics::DrawParam::new())?;
         let fps = Text::new(format!("{:.1}", ggez::timer::fps(ctx)));
@@ -295,5 +323,17 @@ fn main() {
     match event::run(&mut ctx, &mut event_loop, &mut my_game) {
         Ok(_) => println!("Exited cleanly."),
         Err(e) => println!("Error occured: {}", e),
+    }
+}
+
+fn move_towards(orig: f64, target: f64, amount: f64) -> f64 {
+    if orig < target {
+        f64::min(orig+amount, target)
+    }
+    else if orig > target {
+        f64::max(orig-amount, target)
+    }
+    else {
+        target
     }
 }

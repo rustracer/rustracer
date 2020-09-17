@@ -80,7 +80,7 @@ pub trait PixelRenderer {
 }
 
 pub struct GeneratorData {
-    pub full_screen_render_count: u64,
+    pub full_render_count: u64,
     pub index: usize,
     pub pixel_cache: Vec<PixelCache>,
     pub pixels_order: Vec<PixelCachePosition>,
@@ -99,7 +99,7 @@ impl RandomGenerator {
     {
         RandomGenerator {
             data: GeneratorData {
-                full_screen_render_count: 0,
+                full_render_count: 0,
                 index: 0,
                 pixel_cache: vec![
                     PixelCache {
@@ -133,8 +133,13 @@ impl RandomGenerator {
         ];
         self.data.index = 0;
         self.data.pixel_cache = random_positions;
-        self.data.full_screen_render_count = 0;
+        self.data.full_render_count = 0;
         self.data.pixels_order = get_random_positions(width, height, random);
+    }
+    pub fn set_pixels_order(&mut self, width: usize, height: usize, positions: Vec<PixelCachePosition>) {
+        self.data.index = 0;
+        self.data.full_render_count = 0;
+        self.data.pixels_order = positions;
     }
     pub fn propagate_pixels<S: PixelRenderer>(&mut self, renderer: &mut S) {
         // Propagate current pixel.
@@ -152,7 +157,7 @@ impl RandomGenerator {
                 let propagate = 3;
                 for x in (position_x - propagate)..(position_x + propagate) {
                     for y in (position_y - propagate)..(position_y + propagate) {
-                        if let Some(near_index) = self.get_pixel_cache_index(x,y) {
+                        if let Some(near_index) = get_index(x,y, self.data.width, self.data.height) {
                             let near_pixel_cache = &mut self.data.pixel_cache[near_index];
                             if index == near_index {
                                 continue;
@@ -179,38 +184,33 @@ impl RandomGenerator {
             }
         }
     }
-    pub fn get_pixel_cache_index(&self, x: usize, y: usize) -> Option<usize> {
-        if x >= self.data.width || y >= self.data.height {
-            None
-        }
-        else {
-            Some(x + y * self.data.width)
-        }
-    }
 }
 
 impl GeneratorProgress for RandomGenerator {
-    fn get_pixel(&mut self) -> (PixelCachePosition, &mut PixelCache) {
+    fn get_pixel(&mut self) -> Option<(PixelCachePosition, &mut PixelCache)> {
+        if self.data.pixels_order.len() == 0 {
+            return None;
+        }
         let position = self.data.pixels_order[self.data.index];
-        (position, &mut self.data.pixel_cache[position.index])
+        Some((position, &mut self.data.pixel_cache[position.index]))
     }
     fn next(&mut self) -> Option<()> {
         self.data.index += 1;
-        if self.data.index == self.data.pixel_cache.len() {
+        if self.data.index >= self.data.pixels_order.len() {
             self.data.index = 0;
-            self.data.full_screen_render_count += 1;
+            self.data.full_render_count += 1;
             None
         } else {
             Some(())
         }
     }
     fn get_index(&self) -> (u64, usize) {
-        (self.data.full_screen_render_count, self.data.index)
+        (self.data.full_render_count, self.data.index)
     }
 }
 
 pub trait GeneratorProgress {
-    fn get_pixel(&mut self) -> (PixelCachePosition, &mut PixelCache);
+    fn get_pixel(&mut self) -> Option<(PixelCachePosition, &mut PixelCache)>;
     fn next(&mut self) -> Option<()>;
     fn get_index(&self) -> (u64, usize);
 }
@@ -254,10 +254,10 @@ where
         scene: &[&dyn Shape],
         samples: u64,
         renderer: &mut S,
-    ) {
-        let (pos, mut pixel) = generator.get_pixel();
+    ) -> Option<()> {
+        let (pos, mut pixel) = generator.get_pixel()?;
         if pixel.status == GenerationStatus::Final {
-            return;
+            return Some(());
         }
         let mut samples_color = Vector3::new(0.0, 0.0, 0.0);
         for _s in 0..samples {
@@ -294,6 +294,16 @@ where
         color.status = pixel.status.clone();
         pixel.last_color = Some(color.clone());
         renderer.set_pixel(PixelPosition { x: pos.x, y: pos.y }, color);
+        Some(())
+    }
+}
+
+pub fn get_index(x: usize, y: usize, width: usize, height: usize) -> Option<usize> {
+    if x >= width || y >= height {
+        None
+    }
+    else {
+        Some(x + y * width)
     }
 }
 
@@ -307,6 +317,35 @@ where
         for x in 0..width {
             positions.push(PixelCachePosition { x, y, index });
             index += 1;
+        }
+    }
+    positions.shuffle(rng);
+    positions
+}
+pub fn get_positions_around<R>(width: usize, height: usize, rng: &mut R, x: usize, y: usize, radius: usize) -> Vec<PixelCachePosition>
+where
+    R: rand::Rng + 'static + Send,
+{
+    let mut positions: Vec<PixelCachePosition> = Vec::with_capacity(radius * 4);
+    let radius = radius as i64;
+    let origin_x = x as i64;
+    let origin_y = y as i64;
+    let sq_radius = radius * radius;
+    for y_offset in -radius..radius {
+        let distance_y = y_offset * y_offset;
+        for x_offset in -radius..radius {
+            let sq_distance = distance_y + x_offset * x_offset;
+            if sq_distance >= sq_radius {
+                continue;
+            }
+            let x = origin_x + x_offset;
+            let y = origin_y + y_offset;
+            if x < 0 || y < 0 {
+                continue;
+            }
+            if let Some(index) = get_index(x as usize, y as usize, width, height) {
+                positions.push(PixelCachePosition { x: x as usize, y: y as usize, index });
+            }
         }
     }
     positions.shuffle(rng);
