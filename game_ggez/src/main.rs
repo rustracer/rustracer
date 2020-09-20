@@ -41,6 +41,13 @@ impl Renderer {
         let pixels = vec![0; PIXELS_ARRAY_SIZE];
         Self { pixels }
     }
+    fn invalidate_pixel(&mut self, x: usize, y: usize) {
+        let index = (PIXELS_ARRAY_SIZE - 4) - (((WIDTH - x - 1) * 4) + y * WIDTH * 4);
+        self.pixels[index] = 0;
+        self.pixels[index + 1] = 0;
+        self.pixels[index + 2] = 0;
+        self.pixels[index + 3] = 255;
+    }
 }
 impl raytracer_core::PixelRenderer for Renderer {
     fn set_pixel(
@@ -74,6 +81,7 @@ struct MyGame<'a> {
     target_eye_radius: f64,
     target_shape_index: usize,
     must_invalidate: bool,
+    pixels_current: Vec<raytracer_core::PixelCachePosition>,
 }
 
 impl<'a> MyGame<'a> {
@@ -102,6 +110,7 @@ impl<'a> MyGame<'a> {
             target_eye_radius: 100_f64,
             target_shape_index,
             must_invalidate: false,
+            pixels_current: vec![]
         }
     }
 }
@@ -206,17 +215,40 @@ impl<'a> EventHandler for MyGame<'a> {
             self.target_eye_radius = 50_f64;
             self.must_invalidate = true;
         }
+
+        let mouse_position = ggez::input::mouse::position(_ctx);
+        let radius = self.current_eye_radius as usize;
+        let positions_around_mouse = raytracer_core::get_positions_around(
+            WIDTH,
+            HEIGHT,
+            &mut self.random,
+            mouse_position.x as usize,
+            HEIGHT - mouse_position.y as usize,
+            radius,
+        );
         // FIXME: #pixelcache: This condition should exist to avoid cleaning correct pixels
         //if mustInvalidate
         {
-            self.generator
-                .invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
+            //self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
+                // TODO: something to clear only current pixels
+            for position_index in 0..self.generator.get_positions_count() {
+                let (x, y, index) = {
+                    let position = self.generator.get_position(position_index);
+                    
+                    (position.x, position.y, position.index)
+                };
+                self.generator.set_pixel_unstable(index);
+                // FIXME: #pixelcache: problem is that by invalidating, we stop pixel propagation, and also clearing pixels still in range
+                // FIXME: #pixelcache: could be fixed by invalidating pixels outside the vision range but it sound like cpu intensive again...?
+                self.renderer.invalidate_pixel(x, y);
+            }
             // NOTE: not invalidating renderer pixels is a great way to gain performance with very minimal visual impact
             // ----> Also, some might argue that the visual is better WITHOUT invalidating renderer pixels.
             // ----> without a smart #pixelcache solution though, we don't have much choice.
-            self.renderer.invalidate_pixels();
+            //self.renderer.invalidate_pixels();
             // FIXME: #pixelcache: dirty hack to take radius into account
             if self.must_invalidate {
+                self.generator.invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
                 self.must_invalidate = false;
             }
         }
@@ -231,8 +263,6 @@ impl<'a> EventHandler for MyGame<'a> {
             100_f64 * ggez::timer::delta(_ctx).as_secs_f64(),
         );
 
-        let mouse_position = ggez::input::mouse::position(_ctx);
-        let radius = self.current_eye_radius as usize;
         let positions_around_mouse = raytracer_core::get_positions_around(
             WIDTH,
             HEIGHT,

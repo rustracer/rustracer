@@ -89,7 +89,7 @@ pub struct GeneratorData {
 }
 
 pub struct RandomGenerator {
-    data: GeneratorData,
+    pub(crate) data: GeneratorData,
 }
 
 impl RandomGenerator {
@@ -115,6 +115,19 @@ impl RandomGenerator {
                 width,
                 height,
             },
+        }
+    }
+    pub fn get_position(&mut self, index: usize) -> &PixelCachePosition {
+        &self.data.pixels_order[index]
+    }
+     pub fn get_positions_count(&self) -> usize
+    {
+        self.data.pixels_order.len()
+    }
+    pub fn set_pixel_unstable(&mut self, index: usize) {
+        if (self.data.pixel_cache[index].status == GenerationStatus::Final) {
+            self.data.pixel_cache[index].status = GenerationStatus::Unstable;
+            self.data.pixel_cache[index].same_color_count = 0;
         }
     }
     pub fn invalidate_pixels<R>(&mut self, width: usize, height: usize, random: &mut R)
