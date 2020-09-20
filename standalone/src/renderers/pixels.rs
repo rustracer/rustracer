@@ -194,10 +194,10 @@ impl World {
             r: 0,
             g: 0,
             b: 0,
-            status: raytracer_core::GenerationStatus::Unstable,
+            status: raytracer_core::GenerationStatus::NotStarted,
         };
         pixels.resize_with(count, || Pixel {
-            color: black,
+            color: black.clone(),
             write_count: 0,
         });
         Self {
@@ -210,6 +210,9 @@ impl World {
 
     pub fn set_pixel(&mut self, x: usize, y: usize, new_pixel: PixelColor) {
         // NOTE: this is not thread safe
+        if (x >= self.size.width || y >= self.size.height) {
+            return;
+        }
         let mut pixel = &mut self.pixels[y * self.size.width + x];
         pixel.color = new_pixel;
         pixel.write_count += 1;
@@ -223,10 +226,10 @@ impl World {
             r: 0,
             g: 0,
             b: 0,
-            status: raytracer_core::GenerationStatus::Unstable,
+            status: raytracer_core::GenerationStatus::NotStarted,
         };
         for pixel in &mut self.pixels {
-            pixel.color = black;
+            pixel.color = black.clone();
             pixel.write_count = 0;
         }
         self.max_write_count = 0;
@@ -248,8 +251,8 @@ impl World {
                     [(ratio * 255.0) as u8, 0, 0, 0xff]
                 }
                 RenderMode::Status => {
-                    let isDone = pixel.color.status == raytracer_core::GenerationStatus::Final;
-                    [0, if isDone { 255 } else { 0 }, 0, 0xff]
+                    let is_done = pixel.color.status == raytracer_core::GenerationStatus::Final;
+                    [0, if is_done { 255 } else { 0 }, 0, 0xff]
                 }
             };
 

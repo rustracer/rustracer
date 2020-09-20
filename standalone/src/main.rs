@@ -12,7 +12,9 @@ use raytracer_core::materials::lambertian_diffuse::Lambertian;
 use raytracer_core::materials::metal::Metal;
 use raytracer_core::shapes::sphere::Sphere;
 use raytracer_core::Vector3;
-use raytracer_core::{PixelColor, PixelPosition, Raytracer, Scene};
+use raytracer_core::{
+    GeneratorProgress, PixelColor, PixelPosition, PixelRenderer, RandomGenerator, Raytracer, Scene,
+};
 use renderers::pixels::World;
 
 use crate::renderers::pixels::RendererPixels;
@@ -58,7 +60,7 @@ fn main_loop() {
         tx,
     );
     eprint!("Scanlines remaining:\n");
-    let communicator = renderer.pixel_accessor();
+    let mut communicator = renderer.pixel_accessor();
 
     thread::spawn(move || {
         let sphere = Sphere::new(
@@ -87,21 +89,25 @@ fn main_loop() {
         let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
         let mut spp = 1;
         let rng = SmallRng::from_entropy();
-        let mut raytracer = Raytracer::new(width, height, rng, communicator);
+        let mut raytracer = Raytracer::new(width, height, rng);
 
-        let mut generator = raytracer.get_new_generator();
+        let mut generator = RandomGenerator::new(
+            height as usize,
+            width as usize,
+            &mut SmallRng::from_entropy(),
+        );
         loop {
             //spp *= 2;
-            if let Some(pixel_result) =
-                raytracer.generate_pixel(&mut generator, scene.as_slice(), spp)
-            {
-                generator.index += 1;
-            } else {
-                generator.index = 0;
-            }
+            raytracer.generate_pixel(&mut generator, scene.as_slice(), spp, &mut communicator);
+            generator.next();
             while let Ok(received_command) = rx.try_recv() {
                 spp = 1;
-                raytracer.invalidate_pixels();
+                generator.invalidate_pixels(
+                    width as usize,
+                    height as usize,
+                    &mut SmallRng::from_entropy(),
+                );
+                communicator.invalidate_pixels();
                 // frame dependant is bad but it does the job.
                 raytracer.camera = match received_command {
                     Command::Move(movement) => raytracer

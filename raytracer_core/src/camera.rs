@@ -43,9 +43,9 @@ impl Camera {
     pub fn emit_ray_at(&self, offset_x: f64, offset_y: f64) -> Ray {
         Ray::new(
             self.origin.clone_owned(),
-            &self.lower_left_corner - &self.origin
-                + &self.horizontal * offset_x
-                + &self.vertical * offset_y,
+            self.lower_left_corner - self.origin
+                + self.horizontal * offset_x
+                + self.vertical * offset_y,
         )
     }
 

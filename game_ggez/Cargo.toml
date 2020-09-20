@@ -1,0 +1,13 @@
+[package]
+name = "game_ggez"
+version = "0.1.0"
+authors = ["Thierry Berger <contact@thierryberger.com>"]
+edition = "2018"
+
+[dependencies]
+raytracer_core = { path = "../raytracer_core"}
+ggez = "*"
+
+[dependencies.rand]
+version = "0.7"
+features = ["small_rng", ]

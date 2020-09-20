@@ -44,22 +44,26 @@ impl Ray {
         self._project_ray(scene, 50)
     }
 
-    fn find_collision<'a>(&self, scene: &[&'a (dyn Shape + 'a)]) -> Option<Collision<'a>> {
-        let mut maybe_collision: Option<Collision> = None;
+    pub(crate) fn find_collision<'a>(
+        &self,
+        scene: &[&'a (dyn Shape + 'a)],
+    ) -> Option<(Collision<'a>, usize)> {
+        let mut maybe_collision: Option<(Collision, usize)> = None;
+        let mut index = 0;
         for shape in scene {
             let maybe_new_collision = shape.collide(self, T_MIN, T_MAX);
 
-            maybe_collision = match maybe_collision {
-                None => maybe_new_collision,
-                Some(collision) => match maybe_new_collision {
-                    Some(new_collision)
-                        if new_collision.dist_from_origin() < collision.dist_from_origin() =>
-                    {
-                        Some(new_collision)
+            if let Some(new_collision) = maybe_new_collision {
+                match &maybe_collision {
+                    Some(old_collision)
+                        if old_collision.0.dist_from_origin()
+                            < new_collision.dist_from_origin() => {}
+                    _ => {
+                        maybe_collision = Some((new_collision, index));
                     }
-                    _ => Some(collision),
-                },
-            }
+                }
+            };
+            index += 1;
         }
         maybe_collision
     }
@@ -72,8 +76,8 @@ impl Ray {
 
         match may_collision {
             Some(collision) => {
-                let new_color: Color = collision.color(self);
-                match collision.bounce(self) {
+                let new_color: Color = collision.0.color(self);
+                match collision.0.bounce(self) {
                     Some(ray) => new_color.blend(&ray._project_ray(scene, depth - 1)),
                     None => new_color,
                 }
