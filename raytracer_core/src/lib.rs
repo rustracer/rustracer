@@ -136,7 +136,12 @@ impl RandomGenerator {
         self.data.full_render_count = 0;
         self.data.pixels_order = get_random_positions(width, height, random);
     }
-    pub fn set_pixels_order(&mut self, width: usize, height: usize, positions: Vec<PixelCachePosition>) {
+    pub fn set_pixels_order(
+        &mut self,
+        width: usize,
+        height: usize,
+        positions: Vec<PixelCachePosition>,
+    ) {
         self.data.index = 0;
         self.data.full_render_count = 0;
         self.data.pixels_order = positions;
@@ -157,22 +162,27 @@ impl RandomGenerator {
                 let propagate = 3;
                 for x in (position_x - propagate)..(position_x + propagate) {
                     for y in (position_y - propagate)..(position_y + propagate) {
-                        if let Some(near_index) = get_index(x,y, self.data.width, self.data.height) {
+                        if let Some(near_index) = get_index(x, y, self.data.width, self.data.height)
+                        {
                             let near_pixel_cache = &mut self.data.pixel_cache[near_index];
                             if index == near_index {
                                 continue;
                             }
-                            let distance = ((position_x as i64 - (x as i64).abs()).abs() + (position_y as i64 - (y as i64).abs()).abs()) as usize;
-                            if near_pixel_cache.status == GenerationStatus::NotStarted
-                            {
-                                near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
+                            let distance = ((position_x as i64 - (x as i64).abs()).abs()
+                                + (position_y as i64 - (y as i64).abs()).abs())
+                                as usize;
+                            if near_pixel_cache.status == GenerationStatus::NotStarted {
+                                near_pixel_cache.status =
+                                    GenerationStatus::CopyNearPixel(CopyNearPixel { distance });
                                 renderer.set_pixel(PixelPosition { x, y }, color.clone());
-                            }
-                            else if let GenerationStatus::CopyNearPixel(copy) = &mut near_pixel_cache.status {
+                            } else if let GenerationStatus::CopyNearPixel(copy) =
+                                &mut near_pixel_cache.status
+                            {
                                 if copy.distance <= distance {
                                     continue;
                                 }
-                                near_pixel_cache.status = GenerationStatus::CopyNearPixel(CopyNearPixel{distance});
+                                near_pixel_cache.status =
+                                    GenerationStatus::CopyNearPixel(CopyNearPixel { distance });
                                 renderer.set_pixel(PixelPosition { x, y }, color.clone());
                             }
                             // *///I am guessing These 2 lines would actually make the compiler optimize the ifs out.
@@ -247,7 +257,15 @@ where
             },
         }
     }
- 
+
+    /// Returns index of touched shape
+    pub fn get_shape(&self, scene: &[&dyn Shape], x: f64, y: f64) -> Option<usize> {
+        let r = self
+            .camera
+            .emit_ray_at(x / (self.info.width - 1.0), y / (self.info.height - 1.0));
+        Some(r.find_collision(&scene)?.1)
+    }
+
     pub fn generate_pixel<S: PixelRenderer, G: GeneratorProgress>(
         &mut self,
         generator: &mut G,
@@ -301,8 +319,7 @@ where
 pub fn get_index(x: usize, y: usize, width: usize, height: usize) -> Option<usize> {
     if x >= width || y >= height {
         None
-    }
-    else {
+    } else {
         Some(x + y * width)
     }
 }
@@ -322,7 +339,14 @@ where
     positions.shuffle(rng);
     positions
 }
-pub fn get_positions_around<R>(width: usize, height: usize, rng: &mut R, x: usize, y: usize, radius: usize) -> Vec<PixelCachePosition>
+pub fn get_positions_around<R>(
+    width: usize,
+    height: usize,
+    rng: &mut R,
+    x: usize,
+    y: usize,
+    radius: usize,
+) -> Vec<PixelCachePosition>
 where
     R: rand::Rng + 'static + Send,
 {
@@ -344,7 +368,11 @@ where
                 continue;
             }
             if let Some(index) = get_index(x as usize, y as usize, width, height) {
-                positions.push(PixelCachePosition { x: x as usize, y: y as usize, index });
+                positions.push(PixelCachePosition {
+                    x: x as usize,
+                    y: y as usize,
+                    index,
+                });
             }
         }
     }

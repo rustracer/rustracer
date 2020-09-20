@@ -1,11 +1,7 @@
-use event::{KeyCode, KeyMods};
+use event::{KeyCode, KeyMods, MouseButton};
 use ggez::event::{self, EventHandler};
 use ggez::input::keyboard;
-use ggez::{
-    graphics,
-    nalgebra::Point2,
-    Context, ContextBuilder, GameResult,
-};
+use ggez::{graphics, nalgebra::Point2, Context, ContextBuilder, GameResult};
 use graphics::Text;
 use rand::{prelude::SmallRng, SeedableRng};
 use raytracer_core::{
@@ -76,10 +72,17 @@ struct MyGame<'a> {
     random: SmallRng,
     current_eye_radius: f64,
     target_eye_radius: f64,
+    target_shape_index: usize,
+    must_invalidate: bool,
 }
 
 impl<'a> MyGame<'a> {
-    pub fn new(_ctx: &mut Context, dimensions: Dimensions, scene: Scene<'a>) -> MyGame<'a> {
+    pub fn new(
+        _ctx: &mut Context,
+        dimensions: Dimensions,
+        scene: Scene<'a>,
+        target_shape_index: usize,
+    ) -> MyGame<'a> {
         let rng = SmallRng::from_entropy();
         let raytracer = Raytracer::new(dimensions.width as f64, dimensions.height as f64, rng);
 
@@ -97,15 +100,45 @@ impl<'a> MyGame<'a> {
             random: SmallRng::from_entropy(),
             current_eye_radius: 0_f64,
             target_eye_radius: 100_f64,
+            target_shape_index,
+            must_invalidate: false,
         }
     }
 }
 
 impl<'a> EventHandler for MyGame<'a> {
+    fn mouse_button_down_event(
+        &mut self,
+        _ctx: &mut Context,
+        _button: MouseButton,
+        _x: f32,
+        _y: f32,
+    ) {
+        match _button {
+            MouseButton::Left => {
+                let mouse_position = ggez::input::mouse::position(_ctx);
+                if let Some(shape_index) = self.raytracer.get_shape(
+                    &self.scene,
+                    mouse_position.x as f64,
+                    HEIGHT as f64 - mouse_position.y as f64,
+                ) {
+                    if dbg!(shape_index) == self.target_shape_index {
+                        self.must_invalidate = true;
+                        self.current_eye_radius = 0_f64;
+                    } else {
+                        self.target_eye_radius = self.current_eye_radius / 2_f64;
+                    }
+                }
+                else {
+                        self.target_eye_radius = self.current_eye_radius / 2_f64;
+                }
+            }
+            _ => {}
+        }
+    }
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
         let mut time_since_start = ggez::timer::time_since_start(_ctx);
         let time_begin_frame = time_since_start;
-        let mut mustInvalidate = false;
         // input code here...
         if keyboard::is_key_pressed(_ctx, KeyCode::Up) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -121,7 +154,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, movement))
             }
-            mustInvalidate = true;
+            self.target_eye_radius = 50_f64;
+            self.must_invalidate = true;
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Down) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 3_f64 * ggez::timer::delta(_ctx).as_secs_f64();
@@ -136,7 +170,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, -movement))
             }
-            mustInvalidate = true;
+            self.target_eye_radius = 50_f64;
+            self.must_invalidate = true;
         }
         if keyboard::is_key_pressed(_ctx, KeyCode::Left) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -152,7 +187,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, movement, 0_f64))
             }
-            mustInvalidate = true;
+            self.target_eye_radius = 50_f64;
+            self.must_invalidate = true;
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
                 let movement = 2_f64 * ggez::timer::delta(_ctx).as_secs_f64();
@@ -167,7 +203,8 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .rotate(Vector3::new(0_f64, -movement, 0_f64))
             }
-            mustInvalidate = true;
+            self.target_eye_radius = 50_f64;
+            self.must_invalidate = true;
         }
         // FIXME: #pixelcache: This condition should exist to avoid cleaning correct pixels
         //if mustInvalidate
@@ -179,18 +216,34 @@ impl<'a> EventHandler for MyGame<'a> {
             // ----> without a smart #pixelcache solution though, we don't have much choice.
             self.renderer.invalidate_pixels();
             // FIXME: #pixelcache: dirty hack to take radius into account
-            if mustInvalidate {
-            self.target_eye_radius = 50_f64;
+            if self.must_invalidate {
+                self.must_invalidate = false;
             }
         }
-        self.current_eye_radius = move_towards(self.current_eye_radius, self.target_eye_radius, 300_f64 *  ggez::timer::delta(_ctx).as_secs_f64());
-        self.target_eye_radius = move_towards(self.target_eye_radius, 200_f64, 100_f64 *  ggez::timer::delta(_ctx).as_secs_f64());
-        
+        self.current_eye_radius = move_towards(
+            self.current_eye_radius,
+            self.target_eye_radius,
+            300_f64 * ggez::timer::delta(_ctx).as_secs_f64(),
+        );
+        self.target_eye_radius = move_towards(
+            self.target_eye_radius,
+            200_f64,
+            100_f64 * ggez::timer::delta(_ctx).as_secs_f64(),
+        );
+
         let mouse_position = ggez::input::mouse::position(_ctx);
         let radius = self.current_eye_radius as usize;
-        let positions_around_mouse = raytracer_core::get_positions_around(WIDTH, HEIGHT, &mut self.random, mouse_position.x as usize, HEIGHT - mouse_position.y as usize, radius);
-        self.generator.set_pixels_order(WIDTH, HEIGHT, positions_around_mouse);
-        
+        let positions_around_mouse = raytracer_core::get_positions_around(
+            WIDTH,
+            HEIGHT,
+            &mut self.random,
+            mouse_position.x as usize,
+            HEIGHT - mouse_position.y as usize,
+            radius,
+        );
+        self.generator
+            .set_pixels_order(WIDTH, HEIGHT, positions_around_mouse);
+
         // Update code here...
         let mut retries = 0;
         const PIXELS: u32 = 1300;
@@ -220,7 +273,8 @@ impl<'a> EventHandler for MyGame<'a> {
         // The fix would be to estimate the other work and substract it to time_next_frame.
         // Also, if the raytracer is done for current image, we should sleep!
         let target_fps = 20_f64;
-        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / target_fps) - (time_for_frame / 10);
+        self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / target_fps)
+            - (time_for_frame / 10);
         Ok(())
     }
 
@@ -236,12 +290,7 @@ impl<'a> EventHandler for MyGame<'a> {
         }).collect();
         let pixels: Vec<u8> = pixels.iter().flatten().copied().collect();*/
         let pixels = &self.renderer.pixels;
-        let image = ggez::graphics::Image::from_rgba8(
-            ctx,
-            WIDTH as u16,
-            HEIGHT as u16,
-            pixels,
-        )?;
+        let image = ggez::graphics::Image::from_rgba8(ctx, WIDTH as u16, HEIGHT as u16, pixels)?;
         graphics::draw(ctx, &image, ggez::graphics::DrawParam::new())?;
         let fps = Text::new(format!("{:.1}", ggez::timer::fps(ctx)));
         graphics::draw(
@@ -320,6 +369,7 @@ fn main() {
             width: WIDTH,
         },
         scene,
+        0,
     );
 
     // Run!
@@ -331,12 +381,10 @@ fn main() {
 
 fn move_towards(orig: f64, target: f64, amount: f64) -> f64 {
     if orig < target {
-        f64::min(orig+amount, target)
-    }
-    else if orig > target {
-        f64::max(orig-amount, target)
-    }
-    else {
+        f64::min(orig + amount, target)
+    } else if orig > target {
+        f64::max(orig - amount, target)
+    } else {
         target
     }
 }
