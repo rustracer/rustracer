@@ -1,12 +1,17 @@
+pub mod poisson;
+
+use poisson::Poisson;
+
 use event::{KeyCode, KeyMods, MouseButton};
 use ggez::event::{self, EventHandler};
 use ggez::input::keyboard;
 use ggez::{graphics, nalgebra::Point2, Context, ContextBuilder, GameResult};
 use graphics::Text;
-use rand::{prelude::SmallRng, SeedableRng};
+use rand::{Rng, SeedableRng, prelude::SmallRng};
 use raytracer_core::{
     materials::{dielectric::Dielectric, lambertian_diffuse::Lambertian, metal::Metal},
     shapes::sphere::Sphere,
+    Shape,
     GeneratorProgress, PixelRenderer, RandomGenerator, Raytracer, Scene, Vector3,
 };
 
@@ -63,11 +68,12 @@ impl raytracer_core::PixelRenderer for Renderer {
         self.pixels = vec![0; PIXELS_ARRAY_SIZE];
     }
 }
-struct MyGame<'a> {
+struct MyGame {
     renderer: Renderer,
     raytracer: Raytracer<SmallRng>,
     generator: RandomGenerator,
-    scene: Scene<'a>,
+    shapes: Vec<Box<dyn raytracer_core::Shape>>,
+    scene: Scene,
     time_next_frame: std::time::Duration,
     random: SmallRng,
     current_eye_radius: f64,
@@ -76,13 +82,12 @@ struct MyGame<'a> {
     must_invalidate: bool,
 }
 
-impl<'a> MyGame<'a> {
+impl MyGame {
     pub fn new(
         _ctx: &mut Context,
         dimensions: Dimensions,
-        scene: Scene<'a>,
         target_shape_index: usize,
-    ) -> MyGame<'a> {
+    ) -> MyGame {
         let rng = SmallRng::from_entropy();
         let raytracer = Raytracer::new(dimensions.width as f64, dimensions.height as f64, rng);
 
@@ -95,7 +100,8 @@ impl<'a> MyGame<'a> {
             renderer: Renderer::new(),
             raytracer,
             generator,
-            scene,
+            shapes: vec![],
+            scene: vec![],
             time_next_frame: ggez::timer::f64_to_duration(0_f64),
             random: SmallRng::from_entropy(),
             current_eye_radius: 0_f64,
@@ -104,9 +110,50 @@ impl<'a> MyGame<'a> {
             must_invalidate: false,
         }
     }
+    fn change_scene(&mut self, seed: u64) {
+        let ground = Sphere::new(
+            Vector3::new(0.0, -100.5, -1.0),
+            100.0,
+            Box::new(Lambertian::new_from_hex(0x007070)),
+        );
+
+        let mut shapes: Scene = vec![Box::new(ground)];
+        let mut positions = vec![(0f64, 5f64), (0f64, 0f64)];
+        let poisson = Poisson::new();
+        let mut index = 0;
+        let nb_new_shapes = 40;
+        self.target_shape_index = self.random.gen_range(1, nb_new_shapes - 2);
+        while index < positions.len() && shapes.len() < nb_new_shapes {
+            let ref_point = positions[index];
+            if let Some(new_position) = poisson.compute_new_position(&positions, &ref_point, 3f64, 10, &mut self.random) {
+                
+                let new_shape = if shapes.len() == self.target_shape_index {
+                    Sphere::new(
+                        Vector3::new(new_position.0, 0.0, new_position.1),
+                        0.5,
+                        Box::new(Dielectric::new(Vector3::new(1.0, 0.6, 0.60), 1.05)),
+                    )
+                }
+                else {
+                    Sphere::new(
+                        Vector3::new(new_position.0, 0.0, new_position.1),
+                        0.5,
+                        Box::new(Dielectric::new(Vector3::new(0.0, 0.6, 1.0), 1.5)),
+                    )
+                };
+                shapes.push(Box::new(new_shape));
+                positions.push(new_position);
+            }
+            else {
+                index += 1;
+            }
+        }
+        dbg!(shapes.len());
+        self.scene = shapes;
+    }
 }
 
-impl<'a> EventHandler for MyGame<'a> {
+impl EventHandler for MyGame {
     fn mouse_button_down_event(
         &mut self,
         _ctx: &mut Context,
@@ -122,7 +169,9 @@ impl<'a> EventHandler for MyGame<'a> {
                     mouse_position.x as f64,
                     HEIGHT as f64 - mouse_position.y as f64,
                 ) {
-                    if dbg!(shape_index) == self.target_shape_index {
+                    if shape_index == self.target_shape_index {
+                        let random_seed = self.random.gen();
+                        self.change_scene(random_seed);
                         self.must_invalidate = true;
                         self.current_eye_radius = 0_f64;
                     } else {
@@ -137,6 +186,7 @@ impl<'a> EventHandler for MyGame<'a> {
         }
     }
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
+        let eye_radius_moving = 75f64;
         let mut time_since_start = ggez::timer::time_since_start(_ctx);
         let time_begin_frame = time_since_start;
         // input code here...
@@ -154,7 +204,7 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, movement))
             }
-            self.target_eye_radius = 50_f64;
+            self.target_eye_radius = eye_radius_moving;
             self.must_invalidate = true;
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Down) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
@@ -170,40 +220,40 @@ impl<'a> EventHandler for MyGame<'a> {
                     .camera
                     .move_camera(Vector3::new(0_f64, 0_f64, -movement))
             }
-            self.target_eye_radius = 50_f64;
+            self.target_eye_radius = eye_radius_moving;
             self.must_invalidate = true;
         }
         if keyboard::is_key_pressed(_ctx, KeyCode::Left) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
-                let movement = 2_f64 * ggez::timer::delta(_ctx).as_secs_f64();
+                let movement = 1.5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
                 self.raytracer.camera = self
                     .raytracer
                     .camera
                     .rotate(Vector3::new(0_f64, movement, 0_f64))
             } else {
-                let movement = 0.5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
+                let movement = 0.75_f64 * ggez::timer::delta(_ctx).as_secs_f64();
                 self.raytracer.camera = self
                     .raytracer
                     .camera
                     .rotate(Vector3::new(0_f64, movement, 0_f64))
             }
-            self.target_eye_radius = 50_f64;
+            self.target_eye_radius = eye_radius_moving;
             self.must_invalidate = true;
         } else if keyboard::is_key_pressed(_ctx, KeyCode::Right) {
             if keyboard::is_mod_active(_ctx, KeyMods::SHIFT) {
-                let movement = 2_f64 * ggez::timer::delta(_ctx).as_secs_f64();
+                let movement = 1.5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
                 self.raytracer.camera = self
                     .raytracer
                     .camera
                     .rotate(Vector3::new(0_f64, -movement, 0_f64))
             } else {
-                let movement = 0.5_f64 * ggez::timer::delta(_ctx).as_secs_f64();
+                let movement = 0.75_f64 * ggez::timer::delta(_ctx).as_secs_f64();
                 self.raytracer.camera = self
                     .raytracer
                     .camera
                     .rotate(Vector3::new(0_f64, -movement, 0_f64))
             }
-            self.target_eye_radius = 50_f64;
+            self.target_eye_radius = eye_radius_moving;
             self.must_invalidate = true;
         }
         // FIXME: #pixelcache: This condition should exist to avoid cleaning correct pixels
@@ -228,7 +278,7 @@ impl<'a> EventHandler for MyGame<'a> {
         self.target_eye_radius = move_towards(
             self.target_eye_radius,
             200_f64,
-            100_f64 * ggez::timer::delta(_ctx).as_secs_f64(),
+            150_f64 * ggez::timer::delta(_ctx).as_secs_f64(),
         );
 
         let mouse_position = ggez::input::mouse::position(_ctx);
@@ -272,7 +322,7 @@ impl<'a> EventHandler for MyGame<'a> {
         // FIXME: this fps calculation doesn't take into account time to (render + other work) (so the fps can drop significantly)
         // The fix would be to estimate the other work and substract it to time_next_frame.
         // Also, if the raytracer is done for current image, we should sleep!
-        let target_fps = 20_f64;
+        let target_fps = 12_f64;
         self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / target_fps)
             - (time_for_frame / 10);
         Ok(())
@@ -336,29 +386,6 @@ fn main() {
         })
         .build()
         .expect("aieee, could not create ggez context!");
-
-    let sphere = Sphere::new(
-        Vector3::new(-1.01, 0.0, -1.0),
-        0.5,
-        Box::new(Dielectric::new(Vector3::new(1.0, 0.6, 0.60), 1.05)),
-    );
-    let sphere2 = Sphere::new(
-        Vector3::new(0.0, -100.5, -1.0),
-        100.0,
-        Box::new(Lambertian::new_from_hex(0x007070)),
-    );
-    let sphere3 = Sphere::new(
-        Vector3::new(1.0, 0.0, -1.0),
-        0.5,
-        Box::new(Metal::new(Vector3::new(0.8, 0.8, 0.8), 0.1)),
-    );
-    let sphere4 = Sphere::new(
-        Vector3::new(-0.0, 0.0, -1.0),
-        0.5,
-        Box::new(Metal::new(Vector3::new(0.8, 0.6, 0.2), 0.5)),
-    );
-
-    let scene: Scene = vec![&sphere, &sphere2, &sphere3, &sphere4];
     // Create an instance of your event handler.
     // Usually, you should provide it with the Context object to
     // use when setting your game up.
@@ -368,9 +395,9 @@ fn main() {
             height: HEIGHT,
             width: WIDTH,
         },
-        scene,
         0,
     );
+    my_game.change_scene(0);
 
     // Run!
     match event::run(&mut ctx, &mut event_loop, &mut my_game) {

@@ -39,17 +39,15 @@ impl Ray {
         &self.direction
     }
 
-    pub fn project_ray(&self, scene: &[&dyn Shape]) -> Color {
+    pub fn project_ray(&self, scene: &[Box<dyn Shape>]) -> Color {
         // parameterize max depth
         self._project_ray(scene, 50)
     }
-
-    pub(crate) fn find_collision<'a>(
-        &self,
-        scene: &[&'a (dyn Shape + 'a)],
-    ) -> Option<(Collision<'a>, usize)> {
+    
+    pub(crate) fn find_collision<'a: 'b, 'b>(&'a self, scene: &'a [Box<dyn Shape>]) -> Option<(Collision<'a>, usize)> {
         let mut maybe_collision: Option<(Collision, usize)> = None;
         let mut index = 0;
+
         for shape in scene {
             let maybe_new_collision = shape.collide(self, T_MIN, T_MAX);
 
@@ -68,7 +66,7 @@ impl Ray {
         maybe_collision
     }
 
-    fn _project_ray(&self, scene: &[&dyn Shape], depth: i64) -> Color {
+    fn _project_ray(&self, scene: &[Box<dyn Shape>], depth: i64) -> Color {
         if depth == 0 {
             return self.background_color();
         }

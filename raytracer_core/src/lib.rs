@@ -7,7 +7,7 @@ pub use nalgebra::Vector3;
 use rand::seq::SliceRandom;
 
 use crate::camera::Camera;
-use crate::shapes::shape::Shape;
+pub use crate::shapes::shape::Shape;
 
 pub mod camera;
 pub mod materials;
@@ -72,7 +72,7 @@ pub struct PixelCache {
     pub nb_samples: u64,
 }
 
-pub type Scene<'a> = Vec<&'a dyn Shape>;
+pub type Scene = Vec<Box<dyn Shape>>;
 
 pub trait PixelRenderer {
     fn set_pixel(&mut self, pos: PixelPosition, color: PixelColor);
@@ -259,7 +259,7 @@ where
     }
 
     /// Returns index of touched shape
-    pub fn get_shape(&self, scene: &[&dyn Shape], x: f64, y: f64) -> Option<usize> {
+    pub fn get_shape(&self, scene: &[Box<dyn Shape>], x: f64, y: f64) -> Option<usize> {
         let r = self
             .camera
             .emit_ray_at(x / (self.info.width - 1.0), y / (self.info.height - 1.0));
@@ -269,7 +269,7 @@ where
     pub fn generate_pixel<S: PixelRenderer, G: GeneratorProgress>(
         &mut self,
         generator: &mut G,
-        scene: &[&dyn Shape],
+        scene: &[Box<dyn Shape>],
         samples: u64,
         renderer: &mut S,
     ) -> Option<()> {
