@@ -102,7 +102,7 @@ pub fn render() {
         0.1,
         Box::new(Metal::new(Vector3::new(0.8, 0.8, 0.8), 0.0)),
     );
-    let scene: Scene = vec![&sphere, &sphere2, &sphere3];
+    let scene: Scene = vec![Box::new(sphere), Box::new(sphere2), Box::new(sphere3)];
     let rng = rand::rngs::StdRng::seed_from_u64(0);
     let mut communicator = RendererCommunicator {};
     let mut raytracer = Raytracer::new(WIDTH as f64, HEIGHT as f64, rng);
