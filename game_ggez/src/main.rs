@@ -256,15 +256,16 @@ impl EventHandler for MyGame {
             self.target_eye_radius = eye_radius_moving;
             self.must_invalidate = true;
         }
+        self.current_eye_radius = 2000f64;
         // FIXME: #pixelcache: This condition should exist to avoid cleaning correct pixels
-        //if mustInvalidate
+        if self.must_invalidate
         {
             self.generator
                 .invalidate_pixels(WIDTH, HEIGHT, &mut self.random);
             // NOTE: not invalidating renderer pixels is a great way to gain performance with very minimal visual impact
             // ----> Also, some might argue that the visual is better WITHOUT invalidating renderer pixels.
             // ----> without a smart #pixelcache solution though, we don't have much choice.
-            self.renderer.invalidate_pixels();
+            //self.renderer.invalidate_pixels();
             // FIXME: #pixelcache: dirty hack to take radius into account
             if self.must_invalidate {
                 self.must_invalidate = false;
@@ -283,16 +284,16 @@ impl EventHandler for MyGame {
 
         let mouse_position = ggez::input::mouse::position(_ctx);
         let radius = self.current_eye_radius as usize;
-        let positions_around_mouse = raytracer_core::get_positions_around(
+        /*let positions_around_mouse = raytracer_core::get_positions_around(
             WIDTH,
             HEIGHT,
             &mut self.random,
             mouse_position.x as usize,
             HEIGHT - mouse_position.y as usize,
             radius,
-        );
-        self.generator
-            .set_pixels_order(WIDTH, HEIGHT, positions_around_mouse);
+        );*/
+        //self.generator
+        //    .set_pixels_order(WIDTH, HEIGHT, positions_around_mouse);
 
         // Update code here...
         let mut retries = 0;
@@ -322,7 +323,7 @@ impl EventHandler for MyGame {
         // FIXME: this fps calculation doesn't take into account time to (render + other work) (so the fps can drop significantly)
         // The fix would be to estimate the other work and substract it to time_next_frame.
         // Also, if the raytracer is done for current image, we should sleep!
-        let target_fps = 12_f64;
+        let target_fps = 20_f64;
         self.time_next_frame = time_since_start + ggez::timer::f64_to_duration(1_f64 / target_fps)
             - (time_for_frame / 10);
         Ok(())
