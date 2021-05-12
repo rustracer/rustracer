@@ -34,7 +34,7 @@ jobs:
           path: target
           key: bloat-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
       # Simple check to avoid lengthy CI
-      - uses: actions-rs/cargo@v1
+      - uses: actions-rs/cargo@v1.0.3
         with:
           toolchain: nightly
           command: check
