@@ -14,7 +14,7 @@ jobs:
       # FIXME: Dependency installations should be part of the image
       - run: sudo apt-get install pkg-config libasound2-dev libudev-dev
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions-rs/toolchain@v1.0.7
         with:
           toolchain: nightly
       # Cache, see: https://github.com/orf/cargo-bloat-example/blob/master/.github/workflows/bloat.yml
