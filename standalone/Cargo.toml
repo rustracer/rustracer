@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 raytracer_core = { path = "../raytracer_core"}
 pixels = "0.0.4"
-winit = "0.22.0"
+winit = "0.27.4"
 winit_input_helper = "0.7.0"
 env_logger = "0.7.1"
 log = { version = "0.4.8", features = [ "release_max_level_warn" ] }
